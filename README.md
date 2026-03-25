@@ -70,6 +70,7 @@ kubectl apply -f k8s/secrets/secrets.yaml
 
 # 빌드 + 배포 (이후에는 이것만 실행)
 make deploy
+# build → kind load docker-image → kubectl apply → rollout
 # → http://localhost
 ```
 
@@ -133,17 +134,29 @@ riveroverflow/
 ## Makefile 명령어
 
 ```bash
-make help       # 전체 명령어 목록
+make help            # 전체 명령어 목록
 
-make setup      # Kind 클러스터 초기화 (최초 1회)
-make dev        # docker-compose 로컬 개발
-make build      # Docker 이미지 빌드 (3개)
-make push       # 로컬 레지스트리에 push
-make deploy     # 빌드 + push + K8s 롤아웃 (원스텝)
-make logs       # 전체 pod 로그 follow
-make status     # pod 상태 확인
-make clean      # Kind 클러스터 삭제
+make setup           # Kind 클러스터 초기화 (최초 1회, ~2분)
+make dev             # docker-compose 로컬 개발 (hot reload)
+make deploy          # [메인] 빌드 + kind load + K8s 배포 (원스텝)
+
+make deploy-gateway  # gateway만 빠르게 재배포
+make deploy-engine   # engine만 빠르게 재배포
+make deploy-frontend # frontend만 빠르게 재배포
+
+make logs            # 전체 pod 로그 follow
+make logs-engine     # engine 로그만
+make images          # Kind 노드에 로드된 이미지 목록
+make status          # pod 상태 확인
+make clean           # Kind 클러스터 삭제
 ```
+
+**배포 흐름 (`make deploy`)**:
+```
+docker build × 3  →  kind load docker-image × 3  →  kubectl apply  →  rollout
+  (로컬 빌드)          (registry 없이 직접 inject)     (manifest 적용)
+```
+registry push/pull 왕복이 없어 **가장 빠른 로컬 K8s 배포 방식**.
 
 ---
 

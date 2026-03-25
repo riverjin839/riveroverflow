@@ -16,6 +16,7 @@ spec:
       containers:
         - name: frontend
           image: IMAGE_FRONTEND
+          imagePullPolicy: Never   # kind load docker-image로 직접 로드
           ports:
             - containerPort: 80
           readinessProbe:

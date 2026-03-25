@@ -16,6 +16,7 @@ spec:
       containers:
         - name: engine
           image: IMAGE_ENGINE
+          imagePullPolicy: Never   # kind load docker-image로 직접 로드
           ports:
             - containerPort: 9090
           env:
