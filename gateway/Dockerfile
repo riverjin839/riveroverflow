@@ -1,0 +1,32 @@
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /build
+RUN apk add --no-cache git
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o gateway ./cmd/server
+
+# ── Stage 2: Dev (with hot reload) ───────────────────────────────────────────
+FROM golang:1.22-alpine AS dev
+
+WORKDIR /app
+RUN go install github.com/air-verse/air@latest
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+
+CMD ["air", "-c", ".air.toml"]
+
+# ── Stage 3: Production ───────────────────────────────────────────────────────
+FROM gcr.io/distroless/static-debian12 AS production
+
+WORKDIR /app
+COPY --from=builder /build/gateway .
+
+EXPOSE 8080
+USER nonroot:nonroot
+ENTRYPOINT ["/app/gateway"]

@@ -1,0 +1,120 @@
+version: "3.9"
+
+name: riveroverflow
+
+services:
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trader
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: riveroverflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trader -d riveroverflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Backend services ────────────────────────────────────────────────────────
+
+  engine:
+    build:
+      context: ./engine
+      target: dev
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trader:password@postgres:5432/riveroverflow
+      REDIS_URL: redis://redis:6379
+      KIS_APP_KEY: ${KIS_APP_KEY:-}
+      KIS_APP_SECRET: ${KIS_APP_SECRET:-}
+      KIS_ACCOUNT_NO: ${KIS_ACCOUNT_NO:-}
+      KIS_IS_VIRTUAL: ${KIS_IS_VIRTUAL:-true}
+      KIWOOM_BRIDGE_URL: http://kiwoom-bridge:9091
+      ENVIRONMENT: development
+      LOG_LEVEL: DEBUG
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./engine:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build:
+      context: ./gateway
+      target: dev
+    environment:
+      ENGINE_URL: http://engine:9090
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
+      ENVIRONMENT: development
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./gateway:/app
+    depends_on:
+      engine:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      VITE_API_URL: http://localhost:8080
+      VITE_WS_URL: ws://localhost:8080
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - gateway
+
+  # ── Optional: Kiwoom bridge (Windows only) ───────────────────────────────────
+  # kiwoom-bridge:
+  #   build:
+  #     context: ./kiwoom-bridge
+  #     dockerfile: Dockerfile.windows
+  #   ports:
+  #     - "9091:9091"
+  #   environment:
+  #     KIWOOM_USER_ID: ${KIWOOM_USER_ID:-}
+  #     KIWOOM_PASSWORD: ${KIWOOM_PASSWORD:-}
+  #     KIWOOM_CERT_PASSWORD: ${KIWOOM_CERT_PASSWORD:-}
+
+volumes:
+  postgres_data:
+  redis_data:

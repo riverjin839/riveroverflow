@@ -1,0 +1,29 @@
+# Secrets
+.env
+k8s/secrets/secrets.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+dist/
+.pytest_cache/
+
+# Go
+gateway/tmp/
+*.exe
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Docker
+*.tar
+
+# OS
+.DS_Store
+Thumbs.db

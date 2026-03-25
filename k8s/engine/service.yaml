@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: engine
+  namespace: riveroverflow
+spec:
+  selector:
+    app: engine
+  ports:
+    - port: 9090
+      targetPort: 9090

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: engine
+  namespace: riveroverflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: engine
+  template:
+    metadata:
+      labels:
+        app: engine
+    spec:
+      containers:
+        - name: engine
+          image: IMAGE_ENGINE
+          ports:
+            - containerPort: 9090
+          env:
+            - name: DATABASE_URL
+              value: postgresql+asyncpg://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/riveroverflow
+            - name: REDIS_URL
+              value: redis://redis:6379
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: riveroverflow-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: riveroverflow-secrets
+                  key: POSTGRES_PASSWORD
+            - name: KIS_APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: riveroverflow-secrets
+                  key: KIS_APP_KEY
+            - name: KIS_APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: riveroverflow-secrets
+                  key: KIS_APP_SECRET
+            - name: KIS_ACCOUNT_NO
+              valueFrom:
+                secretKeyRef:
+                  name: riveroverflow-secrets
+                  key: KIS_ACCOUNT_NO
+            - name: KIS_IS_VIRTUAL
+              value: "true"
+            - name: ENVIRONMENT
+              value: production
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

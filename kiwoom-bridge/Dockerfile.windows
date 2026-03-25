@@ -1,0 +1,22 @@
+# Kiwoom bridge - requires Windows base image
+# Build: docker build -f Dockerfile.windows -t kiwoom-bridge .
+# Note: Must run on Windows host or Windows container host
+
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
+
+# Install Python 3.11
+RUN Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe -OutFile python.exe ; \
+    Start-Process python.exe -ArgumentList '/quiet InstallAllUsers=1 PrependPath=1' -Wait ; \
+    Remove-Item python.exe
+
+# Install dependencies
+RUN pip install flask pywin32 kiwoom
+
+WORKDIR /app
+COPY bridge_server.py .
+
+EXPOSE 9091
+
+CMD ["python", "bridge_server.py"]
