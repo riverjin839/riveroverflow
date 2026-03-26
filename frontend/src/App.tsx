@@ -4,6 +4,7 @@ import DashboardPage from './views/dashboard/DashboardPage'
 import PortfolioPage from './views/portfolio/PortfolioPage'
 import StrategiesPage from './views/strategies/StrategiesPage'
 import AnalyticsPage from './views/analytics/AnalyticsPage'
+import ScreenerPage from './views/screener/ScreenerPage'
 import SettingsPage from './views/settings/SettingsPage'
 import LoginPage from './views/auth/LoginPage'
 import { useAuthStore } from './models/authStore'
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="portfolio" element={<PortfolioPage />} />
           <Route path="strategies" element={<StrategiesPage />} />
+          <Route path="screener" element={<ScreenerPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

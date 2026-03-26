@@ -9,7 +9,7 @@ from .core.database import engine, Base
 from .broker.kis import KISBroker
 from .engine.runner import TradingEngine
 from .engine.scheduler import MarketScheduler
-from .api.routes import trades, strategies, portfolio
+from .api.routes import trades, strategies, portfolio, screener
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -147,3 +147,4 @@ async def engine_status():
 app.include_router(trades.router, prefix="/api/v1")
 app.include_router(strategies.router, prefix="/api/v1")
 app.include_router(portfolio.router, prefix="/api/v1")
+app.include_router(screener.router, prefix="/api/v1")
