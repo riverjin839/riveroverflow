@@ -9,7 +9,9 @@ from .core.database import engine, Base
 from .broker.kis import KISBroker
 from .engine.runner import TradingEngine
 from .engine.scheduler import MarketScheduler
-from .api.routes import trades, strategies, portfolio, screener
+from .api.routes import trades, strategies, portfolio, screener, ontology, research
+from .engine.researcher import AutoResearcher
+from .models.ontology import seed_ontology
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -34,9 +36,20 @@ async def lifespan(app: FastAPI):
     engine_runner = TradingEngine(broker=broker)
     app.state.trading_engine = engine_runner
 
+    # Initialize AutoResearcher
+    researcher = AutoResearcher(broker=broker)
+    app.state.researcher = researcher
+
     # Start market scheduler (auto start/stop based on KRX hours)
-    scheduler = MarketScheduler(engine_runner)
+    scheduler = MarketScheduler(engine_runner, researcher=researcher)
     scheduler.start()
+
+    # Seed ontology rules (최초 1회)
+    async with engine.begin() as conn:
+        pass  # tables already created above
+    from .core.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as session:
+        await seed_ontology(session)
     app.state.scheduler = scheduler
 
     # If market is currently open, start immediately
@@ -148,3 +161,5 @@ app.include_router(trades.router, prefix="/api/v1")
 app.include_router(strategies.router, prefix="/api/v1")
 app.include_router(portfolio.router, prefix="/api/v1")
 app.include_router(screener.router, prefix="/api/v1")
+app.include_router(ontology.router, prefix="/api/v1")
+app.include_router(research.router, prefix="/api/v1")

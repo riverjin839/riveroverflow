@@ -7,6 +7,8 @@ import {
   BarChart3,
   Settings,
   TrendingUp,
+  FlaskConical,
+  Network,
   Menu,
   X,
   LogOut,
@@ -18,12 +20,14 @@ import { useRealtimeStore } from '../../models/realtimeStore'
 import clsx from 'clsx'
 
 const NAV_ITEMS = [
-  { to: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
-  { to: '/portfolio', icon: Briefcase, label: '포트폴리오' },
-  { to: '/strategies', icon: Zap, label: '전략' },
-  { to: '/screener', icon: TrendingUp, label: '신고가 스크리너' },
-  { to: '/analytics', icon: BarChart3, label: '분석' },
-  { to: '/settings', icon: Settings, label: '설정' },
+  { to: '/dashboard',  icon: LayoutDashboard, label: '대시보드' },
+  { to: '/portfolio',  icon: Briefcase,        label: '포트폴리오' },
+  { to: '/strategies', icon: Zap,              label: '전략' },
+  { to: '/screener',   icon: TrendingUp,       label: '신고가 스크리너' },
+  { to: '/research',   icon: FlaskConical,     label: '오토리서치' },
+  { to: '/ontology',   icon: Network,          label: '온톨로지' },
+  { to: '/analytics',  icon: BarChart3,        label: '분석' },
+  { to: '/settings',   icon: Settings,         label: '설정' },
 ]
 
 export default function AppShell() {
