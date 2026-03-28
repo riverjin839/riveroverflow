@@ -12,7 +12,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o gateway ./cmd/server
 FROM golang:1.22-alpine AS dev
 
 WORKDIR /app
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.52.3
 
 COPY . .
 RUN go mod tidy
