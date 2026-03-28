@@ -3,9 +3,20 @@ MACD (Moving Average Convergence Divergence) Strategy.
 BUY when MACD line crosses above Signal line.
 SELL when MACD line crosses below Signal line.
 """
-import pandas_ta as ta
+import pandas as pd
 
 from ..base import AbstractStrategy, MarketSnapshot, Signal, SignalType, StrategyConfig
+
+
+def _macd(
+    close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    ema_fast = close.ewm(span=fast, adjust=False).mean()
+    ema_slow = close.ewm(span=slow, adjust=False).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
 
 
 class MACDStrategy(AbstractStrategy):
@@ -39,24 +50,13 @@ class MACDStrategy(AbstractStrategy):
             )
 
         closes = df["close"].astype(float)
-        macd_df = ta.macd(closes, fast=self.fast, slow=self.slow, signal=self.signal_period)
+        macd_line, signal_line, histogram = _macd(
+            closes, fast=self.fast, slow=self.slow, signal=self.signal_period
+        )
 
-        if macd_df is None or macd_df.empty:
-            return Signal(
-                strategy_id=self.strategy_id,
-                symbol=snapshot.symbol,
-                signal_type=SignalType.HOLD,
-                confidence=0.0,
-                reason="MACD calculation failed",
-            )
-
-        macd_col = f"MACD_{self.fast}_{self.slow}_{self.signal_period}"
-        sig_col = f"MACDs_{self.fast}_{self.slow}_{self.signal_period}"
-        hist_col = f"MACDh_{self.fast}_{self.slow}_{self.signal_period}"
-
-        macd_val = float(macd_df[macd_col].iloc[-1])
-        sig_val = float(macd_df[sig_col].iloc[-1])
-        hist_val = float(macd_df[hist_col].iloc[-1])
+        macd_val = float(macd_line.iloc[-1])
+        sig_val = float(signal_line.iloc[-1])
+        hist_val = float(histogram.iloc[-1])
 
         prev_macd = self._prev_macd.get(snapshot.symbol)
         prev_sig = self._prev_signal.get(snapshot.symbol)

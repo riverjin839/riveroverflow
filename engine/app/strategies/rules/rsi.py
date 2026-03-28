@@ -3,9 +3,19 @@ RSI (Relative Strength Index) Strategy.
 BUY when RSI < oversold threshold (과매도).
 SELL when RSI > overbought threshold (과매수).
 """
-import pandas_ta as ta
+import pandas as pd
 
 from ..base import AbstractStrategy, MarketSnapshot, Signal, SignalType, StrategyConfig
+
+
+def _rsi(close: pd.Series, period: int = 14) -> pd.Series:
+    delta = close.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(com=period - 1, min_periods=period).mean()
+    avg_loss = loss.ewm(com=period - 1, min_periods=period).mean()
+    rs = avg_gain / avg_loss.replace(0, float("nan"))
+    return 100 - (100 / (1 + rs))
 
 
 class RSIStrategy(AbstractStrategy):
@@ -35,7 +45,7 @@ class RSIStrategy(AbstractStrategy):
             )
 
         closes = df["close"].astype(float)
-        rsi_series = ta.rsi(closes, length=self.period)
+        rsi_series = _rsi(closes, period=self.period)
         rsi = float(rsi_series.iloc[-1])
 
         if rsi < self.oversold:
