@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import {
   createChart,
-  CandlestickSeries,
   ColorType,
   CrosshairMode,
 } from 'lightweight-charts'
@@ -39,7 +38,7 @@ export default function StockChart({ symbol, name }: Props) {
     })
     chartRef.current = chart
 
-    const candleSeries = chart.addSeries(CandlestickSeries, {
+    const candleSeries = chart.addCandlestickSeries({
       upColor: '#ef4444',
       downColor: '#3b82f6',
       borderUpColor: '#ef4444',
