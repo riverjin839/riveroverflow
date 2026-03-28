@@ -7,7 +7,10 @@ import logging
 from datetime import datetime
 from decimal import Decimal
 
-import kis_api as kis  # python-kis
+try:
+    import kis_api as kis  # python-kis
+except ImportError as _e:
+    raise ImportError("python-kis 패키지가 설치되지 않았습니다. pip install python-kis") from _e
 
 from .base import (
     AbstractBroker,

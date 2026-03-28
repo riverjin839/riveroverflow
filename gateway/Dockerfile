@@ -4,10 +4,8 @@ FROM golang:1.22-alpine AS builder
 WORKDIR /build
 RUN apk add --no-cache git
 
-COPY go.mod go.sum ./
-RUN go mod download
-
 COPY . .
+RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o gateway ./cmd/server
 
 # ── Stage 2: Dev (with hot reload) ───────────────────────────────────────────
@@ -15,9 +13,9 @@ FROM golang:1.22-alpine AS dev
 
 WORKDIR /app
 RUN go install github.com/air-verse/air@latest
-COPY go.mod go.sum ./
-RUN go mod download
+
 COPY . .
+RUN go mod tidy
 
 CMD ["air", "-c", ".air.toml"]
 

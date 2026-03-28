@@ -6,10 +6,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
 from .core.database import engine, Base
-from .broker.kis import KISBroker
+try:
+    from .broker.kis import KISBroker
+except ImportError:
+    KISBroker = None  # python-kis 미설치 시 KIS 브로커 비활성화
 from .engine.runner import TradingEngine
 from .engine.scheduler import MarketScheduler
-from .api.routes import trades, strategies, portfolio
+from .api.routes import trades, strategies, portfolio, screener, ontology, research
+from .engine.researcher import AutoResearcher
+from .models.ontology import seed_ontology
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -28,15 +33,30 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     # Initialize broker and trading engine
-    broker = KISBroker()
+    if KISBroker is not None:
+        broker = KISBroker()
+    else:
+        broker = None
+        logger.warning("python-kis 미설치 — KIS 브로커 비활성화. 실시간 시세/주문 불가.")
     app.state.broker = broker
 
     engine_runner = TradingEngine(broker=broker)
     app.state.trading_engine = engine_runner
 
+    # Initialize AutoResearcher
+    researcher = AutoResearcher(broker=broker)
+    app.state.researcher = researcher
+
     # Start market scheduler (auto start/stop based on KRX hours)
-    scheduler = MarketScheduler(engine_runner)
+    scheduler = MarketScheduler(engine_runner, researcher=researcher)
     scheduler.start()
+
+    # Seed ontology rules (최초 1회)
+    async with engine.begin() as conn:
+        pass  # tables already created above
+    from .core.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as session:
+        await seed_ontology(session)
     app.state.scheduler = scheduler
 
     # If market is currently open, start immediately
@@ -147,3 +167,6 @@ async def engine_status():
 app.include_router(trades.router, prefix="/api/v1")
 app.include_router(strategies.router, prefix="/api/v1")
 app.include_router(portfolio.router, prefix="/api/v1")
+app.include_router(screener.router, prefix="/api/v1")
+app.include_router(ontology.router, prefix="/api/v1")
+app.include_router(research.router, prefix="/api/v1")
