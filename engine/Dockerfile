@@ -4,7 +4,8 @@ FROM python:3.12-slim AS dev
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
-RUN pip install --no-cache-dir uv
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir uv
 
 COPY requirements.txt .
 RUN uv pip install --system --no-cache -r requirements.txt
@@ -19,7 +20,8 @@ FROM python:3.12-slim AS production
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
-RUN pip install --no-cache-dir uv
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir uv
 
 COPY requirements.txt .
 RUN uv pip install --system --no-cache -r requirements.txt

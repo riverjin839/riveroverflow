@@ -7,7 +7,11 @@ router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 # Dependency: get broker instance from app state
 def get_broker(request) -> AbstractBroker:
-    return request.app.state.broker
+    broker = getattr(request.app.state, "broker", None)
+    if broker is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="브로커가 초기화되지 않았습니다. KIS 자격증명을 설정하세요.")
+    return broker
 
 
 @router.get("/balance")

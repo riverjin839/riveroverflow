@@ -12,12 +12,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o gateway ./cmd/server
 FROM golang:1.22-alpine AS dev
 
 WORKDIR /app
-RUN go install github.com/air-verse/air@v1.52.3
+RUN apk add --no-cache curl && go install github.com/air-verse/air@v1.52.3
 
 COPY . .
 RUN go mod tidy
 
-CMD ["air", "-c", ".air.toml"]
+CMD ["sh", "-c", "[ ! -f go.sum ] && go mod tidy; exec air -c .air.toml"]
 
 # ── Stage 3: Production ───────────────────────────────────────────────────────
 FROM gcr.io/distroless/static-debian12 AS production
