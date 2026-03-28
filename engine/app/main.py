@@ -6,7 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
 from .core.database import engine, Base
-from .broker.kis import KISBroker
+try:
+    from .broker.kis import KISBroker
+except ImportError:
+    KISBroker = None  # python-kis 미설치 시 KIS 브로커 비활성화
 from .engine.runner import TradingEngine
 from .engine.scheduler import MarketScheduler
 from .api.routes import trades, strategies, portfolio, screener, ontology, research
@@ -30,7 +33,11 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     # Initialize broker and trading engine
-    broker = KISBroker()
+    if KISBroker is not None:
+        broker = KISBroker()
+    else:
+        broker = None
+        logger.warning("python-kis 미설치 — KIS 브로커 비활성화. 실시간 시세/주문 불가.")
     app.state.broker = broker
 
     engine_runner = TradingEngine(broker=broker)
