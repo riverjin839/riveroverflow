@@ -33,11 +33,13 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     # Initialize broker and trading engine
-    if KISBroker is not None:
+    if KISBroker is not None and settings.kis_app_key:
         broker = KISBroker()
+        logger.info("KIS 브로커 초기화")
     else:
-        broker = None
-        logger.warning("python-kis 미설치 — KIS 브로커 비활성화. 실시간 시세/주문 불가.")
+        from .broker.public import PublicBroker
+        broker = PublicBroker()
+        logger.info("PublicBroker(pykrx) 초기화 — KIS 미설정, 공공 데이터 사용")
     app.state.broker = broker
 
     engine_runner = TradingEngine(broker=broker)
