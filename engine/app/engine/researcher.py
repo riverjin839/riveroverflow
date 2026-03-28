@@ -235,6 +235,22 @@ class AutoResearcher:
             signals["volume"] = "spike" if volume_ratio >= 2.0 else "normal"
             signals["volume_ratio"] = volume_ratio
 
+        # ── MA60/MA120 상회/하회 ───────────────────────────
+        if ma60_val is not None and not pd.isna(ma60_val):
+            signals["ma60_status"] = "above_ma60" if current_price > ma60_val else "below_ma60"
+
+        if len(df) >= 120:
+            ma120_raw = df["close"].rolling(120).mean().iloc[-1]
+            if pd.notna(ma120_raw):
+                signals["ma120_status"] = (
+                    "above_ma120" if current_price > float(ma120_raw) else "below_ma120"
+                )
+
+        # ── 월 누적 거래대금 (최근 22거래일 합산, 단위: 억) ──
+        recent_22 = df.tail(22)
+        monthly_tv = float((recent_22["close"] * recent_22["volume"]).sum()) / 1e8
+        signals["monthly_tv"] = round(monthly_tv, 0)
+
         # ── 종합 스코어 (0~100) ────────────────────
         score = 0.0
         if rsi is not None and rsi < 30:
