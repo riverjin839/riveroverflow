@@ -81,6 +81,17 @@ class ConditionScanResult(BaseModel):
     matched_conditions: list[str]   # 한글 설명
 
 
+def _required_fetch_count(conditions: list[ConditionSpec], period_days: int) -> int:
+    """조건 타입에 따라 필요한 최소 OHLCV 행 수를 계산한다."""
+    extra = period_days + 20
+    for c in conditions:
+        if c.type == "monthly_cumulative_trading_value":
+            extra = max(extra, c.months * 22 + 10)
+        elif c.type == "price_above_ma":
+            extra = max(extra, c.ma_period + 10)
+    return max(extra, 40)
+
+
 async def _condition_scan_symbol(
     broker,
     symbol: str,
@@ -88,7 +99,7 @@ async def _condition_scan_symbol(
     period_days: int,
 ) -> Optional[ConditionScanResult]:
     try:
-        fetch_count = max(period_days + 20, 40)
+        fetch_count = _required_fetch_count(conditions, period_days)
         ohlcv_data, market = await asyncio.gather(
             broker.get_ohlcv(symbol, "D", fetch_count),
             broker.get_market_price(symbol),
@@ -101,7 +112,7 @@ async def _condition_scan_symbol(
             df[col] = pd.to_numeric(df[col], errors="coerce")
         df = df.dropna(subset=["open", "high", "low", "close", "volume"])
 
-        if not evaluate_conditions(df, conditions):
+        if not evaluate_conditions(df, conditions, symbol=symbol):
             return None
 
         return ConditionScanResult(

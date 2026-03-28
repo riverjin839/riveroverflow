@@ -31,6 +31,10 @@ const SIGNAL_LABELS: Record<string, { label: string; cls: string }> = {
   new_high:     { label: '신고가', cls: 'bg-up/20 text-up' },
   near_high:    { label: '고가근접', cls: 'bg-yellow-500/20 text-yellow-400' },
   spike:        { label: '거래량↑', cls: 'bg-purple-500/20 text-purple-400' },
+  above_ma60:   { label: 'MA60 상회', cls: 'bg-blue-500/20 text-blue-400' },
+  below_ma60:   { label: 'MA60 하회', cls: 'bg-red-800/20 text-red-400' },
+  above_ma120:  { label: 'MA120 상회', cls: 'bg-blue-400/20 text-blue-300' },
+  below_ma120:  { label: 'MA120 하회', cls: 'bg-red-900/20 text-red-500' },
 }
 
 function SignalChips({ signals }: { signals: ResearchResult['signals'] }) {
@@ -40,6 +44,8 @@ function SignalChips({ signals }: { signals: ResearchResult['signals'] }) {
   if (signals.macd) chips.push(signals.macd)
   if (signals.high_status && signals.high_status !== 'normal') chips.push(signals.high_status)
   if (signals.volume === 'spike') chips.push('spike')
+  if (signals.ma60_status === 'above_ma60') chips.push('above_ma60')
+  if (signals.ma120_status === 'above_ma120') chips.push('above_ma120')
 
   return (
     <div className="flex flex-wrap gap-1">
@@ -103,6 +109,14 @@ function DetailRow({ r }: { r: ResearchResult }) {
               <span className="ml-2 text-white font-mono">{r.macd_val.toFixed(2)}</span>
             </div>
           )}
+          {r.signals.monthly_tv != null && (
+            <div>
+              <span className="text-slate-500">월누적거래대금</span>
+              <span className="ml-2 text-white font-mono">
+                {(r.signals.monthly_tv as number).toLocaleString()}억
+              </span>
+            </div>
+          )}
         </div>
         <p className="mt-2 text-xs text-slate-400">{r.summary}</p>
       </td>
@@ -149,11 +163,13 @@ function ResultRow({ r }: { r: ResearchResult }) {
 
 // ── 시그널 필터 버튼 ──────────────────────────────────
 const FILTER_OPTIONS = [
-  { key: 'oversold', label: 'RSI 과매도' },
+  { key: 'oversold',    label: 'RSI 과매도' },
   { key: 'golden_cross', label: '골든크로스' },
-  { key: 'bullish', label: 'MACD 강세' },
-  { key: 'near_high', label: '고가근접' },
-  { key: 'spike', label: '거래량급증' },
+  { key: 'bullish',     label: 'MACD 강세' },
+  { key: 'near_high',   label: '고가근접' },
+  { key: 'spike',       label: '거래량급증' },
+  { key: 'above_ma60',  label: 'MA60 상회' },
+  { key: 'above_ma120', label: 'MA120 상회' },
 ]
 
 // ══════════════════════════════════════════════════════
@@ -161,15 +177,21 @@ const FILTER_OPTIONS = [
 // ══════════════════════════════════════════════════════
 
 const CONDITION_TYPE_OPTIONS = [
-  { value: 'consecutive_bullish', label: 'N일 연속 양봉', hasThreshold: false, hasWick: false },
-  { value: 'consecutive_bearish_no_wick', label: 'N일 연속 꼬리없는 음봉', hasThreshold: false, hasWick: true },
-  { value: 'trading_value_consecutive', label: 'N일 연속 거래대금', hasThreshold: true, hasWick: false },
+  { value: 'consecutive_bullish',              label: 'N일 연속 양봉',        hasThreshold: false, hasWick: false, hasMonths: false, hasMaPeriod: false, hasSymbols: false },
+  { value: 'consecutive_bearish_no_wick',      label: 'N일 연속 꼬리없는 음봉', hasThreshold: false, hasWick: true,  hasMonths: false, hasMaPeriod: false, hasSymbols: false },
+  { value: 'trading_value_consecutive',        label: 'N일 연속 거래대금',     hasThreshold: true,  hasWick: false, hasMonths: false, hasMaPeriod: false, hasSymbols: false },
+  { value: 'monthly_cumulative_trading_value', label: '월단위 누적 거래대금',   hasThreshold: true,  hasWick: false, hasMonths: true,  hasMaPeriod: false, hasSymbols: false },
+  { value: 'price_above_ma',                   label: '이동평균 상회',          hasThreshold: false, hasWick: false, hasMonths: false, hasMaPeriod: true,  hasSymbols: false },
+  { value: 'symbol_in_list',                   label: '종목 리스트 포함',       hasThreshold: false, hasWick: false, hasMonths: false, hasMaPeriod: false, hasSymbols: true  },
 ] as const
 
 function conditionLabel(c: ConditionSpec): string {
   if (c.type === 'consecutive_bullish') return `${c.n}일 연속 양봉`
   if (c.type === 'consecutive_bearish_no_wick') return `${c.n}일 연속 꼬리없는 음봉 (꼬리 ${c.wick_pct ?? 1}% 이내)`
   if (c.type === 'trading_value_consecutive') return `거래대금 ${c.n}일 연속 ${(c.threshold ?? 0).toLocaleString()}억 이상`
+  if (c.type === 'monthly_cumulative_trading_value') return `${c.months ?? 1}개월 누적 거래대금 ${(c.threshold ?? 0).toLocaleString()}억 이상`
+  if (c.type === 'price_above_ma') return `현재가 MA${c.ma_period ?? 20} 상회`
+  if (c.type === 'symbol_in_list') return `종목 리스트 포함 (${(c.symbols ?? []).length}개)`
   return c.type
 }
 
@@ -183,15 +205,26 @@ function ConditionScreenerTab() {
   const [buildN, setBuildN] = useState(3)
   const [buildThreshold, setBuildThreshold] = useState(3000)
   const [buildWickPct, setBuildWickPct] = useState(1.0)
+  const [buildMonths, setBuildMonths] = useState(1)
+  const [buildMaPeriod, setBuildMaPeriod] = useState(20)
+  const [buildSymbolList, setBuildSymbolList] = useState('')  // 쉼표 구분 입력
 
   const selectedMeta = CONDITION_TYPE_OPTIONS.find((o) => o.value === buildType)!
 
   function addCondition() {
+    const symbolArr = buildSymbolList
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length === 6 && /^\d+$/.test(s))
+
     const spec: ConditionSpec = {
       type: buildType,
       n: buildN,
       ...(selectedMeta.hasThreshold && { threshold: buildThreshold }),
       ...(selectedMeta.hasWick && { wick_pct: buildWickPct }),
+      ...(selectedMeta.hasMonths && { months: buildMonths }),
+      ...(selectedMeta.hasMaPeriod && { ma_period: buildMaPeriod }),
+      ...(selectedMeta.hasSymbols && { symbols: symbolArr }),
     }
     setConditions((prev) => [...prev, spec])
   }
@@ -274,7 +307,56 @@ function ConditionScreenerTab() {
               />
             </div>
           )}
+
+          {/* 개월수 (월 누적 거래대금) */}
+          {selectedMeta.hasMonths && (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">기준 개월수</label>
+              <input
+                type="number"
+                min={1}
+                max={12}
+                value={buildMonths}
+                onChange={(e) => setBuildMonths(Math.max(1, Math.min(12, Number(e.target.value))))}
+                className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+              />
+            </div>
+          )}
+
+          {/* 이동평균 기간 */}
+          {selectedMeta.hasMaPeriod && (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">이동평균 기간</label>
+              <select
+                value={buildMaPeriod}
+                onChange={(e) => setBuildMaPeriod(Number(e.target.value))}
+                className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+              >
+                <option value={5}>MA5 (1주)</option>
+                <option value={20}>MA20 (1개월)</option>
+                <option value={60}>MA60 (3개월)</option>
+                <option value={120}>MA120 (6개월)</option>
+                <option value={200}>MA200 (10개월)</option>
+              </select>
+            </div>
+          )}
         </div>
+
+        {/* 종목 리스트 입력 */}
+        {selectedMeta.hasSymbols && (
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              종목코드 목록 (쉼표 구분, 6자리 숫자만 인식)
+            </label>
+            <input
+              type="text"
+              value={buildSymbolList}
+              onChange={(e) => setBuildSymbolList(e.target.value)}
+              placeholder="005930,000660,035420"
+              className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500"
+            />
+          </div>
+        )}
 
         <button
           onClick={addCondition}
@@ -407,6 +489,7 @@ export default function ResearchPage() {
   const [customSymbols, setCustomSymbols] = useState('')
   const [periodDays, setPeriodDays] = useState(60)
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set())
+  const [minMonthlyTV, setMinMonthlyTV] = useState('')
 
   function toggleFilter(key: string) {
     setActiveFilters((prev) => {
@@ -416,13 +499,17 @@ export default function ResearchPage() {
     })
   }
 
-  const filteredResults =
-    activeFilters.size === 0
-      ? results
-      : results.filter((r) => {
-          const sigVals = Object.values(r.signals).map((v) => String(v))
-          return [...activeFilters].some((f) => sigVals.some((v) => v.includes(f)))
-        })
+  const filteredResults = results.filter((r) => {
+    if (activeFilters.size > 0) {
+      const sigVals = Object.values(r.signals).map((v) => String(v))
+      if (![...activeFilters].some((f) => sigVals.some((v) => v.includes(f)))) return false
+    }
+    if (minMonthlyTV !== '') {
+      const tv = r.signals.monthly_tv as number | undefined
+      if (tv == null || tv < Number(minMonthlyTV)) return false
+    }
+    return true
+  })
 
   function handleScan() {
     const syms = customSymbols.trim()
@@ -510,21 +597,43 @@ export default function ResearchPage() {
 
           {/* 시그널 필터 */}
           {results.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {FILTER_OPTIONS.map((f) => (
-                <button
-                  key={f.key}
-                  onClick={() => toggleFilter(f.key)}
-                  className={clsx(
-                    'px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                    activeFilters.has(f.key)
-                      ? 'bg-brand-500 text-white'
-                      : 'bg-surface-card text-slate-400 border border-surface-border hover:text-white'
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {FILTER_OPTIONS.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => toggleFilter(f.key)}
+                    className={clsx(
+                      'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                      activeFilters.has(f.key)
+                        ? 'bg-brand-500 text-white'
+                        : 'bg-surface-card text-slate-400 border border-surface-border hover:text-white'
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">월누적거래대금</span>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="최소 억 (예: 3000)"
+                  value={minMonthlyTV}
+                  onChange={(e) => setMinMonthlyTV(e.target.value)}
+                  className="w-44 bg-surface border border-surface-border rounded-lg px-2 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-500"
+                />
+                <span className="text-xs text-slate-500">억 이상</span>
+                {minMonthlyTV !== '' && (
+                  <button
+                    onClick={() => setMinMonthlyTV('')}
+                    className="text-xs text-slate-500 hover:text-white"
+                  >
+                    ✕ 초기화
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

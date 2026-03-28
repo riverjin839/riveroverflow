@@ -1,10 +1,19 @@
 import { create } from 'zustand'
 
 export interface ConditionSpec {
-  type: 'consecutive_bullish' | 'consecutive_bearish_no_wick' | 'trading_value_consecutive'
+  type:
+    | 'consecutive_bullish'
+    | 'consecutive_bearish_no_wick'
+    | 'trading_value_consecutive'
+    | 'monthly_cumulative_trading_value'
+    | 'price_above_ma'
+    | 'symbol_in_list'
   n: number
-  threshold?: number   // 억 KRW (trading_value 전용)
+  threshold?: number   // 억 KRW (trading_value / monthly 전용)
   wick_pct?: number    // % (bearish_no_wick 전용)
+  months?: number      // 개월수 (monthly_cumulative 전용)
+  ma_period?: number   // 이동평균 기간 (price_above_ma 전용)
+  symbols?: string[]   // 종목코드 목록 (symbol_in_list 전용)
 }
 
 export interface ConditionResult {
@@ -39,6 +48,9 @@ export interface ResearchResult {
     high_status?: string
     volume?: string
     volume_ratio?: number
+    ma60_status?: string
+    ma120_status?: string
+    monthly_tv?: number
     [key: string]: unknown
   }
   composite_score: number
