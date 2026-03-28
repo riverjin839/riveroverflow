@@ -1,5 +1,20 @@
 import { create } from 'zustand'
 
+export interface ConditionSpec {
+  type: 'consecutive_bullish' | 'consecutive_bearish_no_wick' | 'trading_value_consecutive'
+  n: number
+  threshold?: number   // 억 KRW (trading_value 전용)
+  wick_pct?: number    // % (bearish_no_wick 전용)
+}
+
+export interface ConditionResult {
+  symbol: string
+  name: string
+  current_price: number
+  volume: number
+  matched_conditions: string[]
+}
+
 export interface ResearchResult {
   symbol: string
   name: string
@@ -37,6 +52,10 @@ interface ResearchState {
   setResults: (results: ResearchResult[]) => void
   setLoading: (v: boolean) => void
   setLastScanned: (t: string) => void
+  conditionResults: ConditionResult[]
+  conditionLoading: boolean
+  setConditionResults: (results: ConditionResult[]) => void
+  setConditionLoading: (v: boolean) => void
 }
 
 export const useResearchStore = create<ResearchState>((set) => ({
@@ -46,4 +65,8 @@ export const useResearchStore = create<ResearchState>((set) => ({
   setResults: (results) => set({ results }),
   setLoading: (loading) => set({ loading }),
   setLastScanned: (lastScanned) => set({ lastScanned }),
+  conditionResults: [],
+  conditionLoading: false,
+  setConditionResults: (conditionResults) => set({ conditionResults }),
+  setConditionLoading: (conditionLoading) => set({ conditionLoading }),
 }))
