@@ -12,8 +12,29 @@ from datetime import date, datetime
 from typing import Optional
 
 import pandas as pd
-import pandas_ta as ta
 from sqlalchemy import select
+
+
+# ── 순수 pandas 기술적 지표 구현 (pandas-ta 의존성 제거) ──────────────────────
+
+def _rsi(close: pd.Series, period: int = 14) -> pd.Series:
+    delta = close.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(com=period - 1, min_periods=period).mean()
+    avg_loss = loss.ewm(com=period - 1, min_periods=period).mean()
+    rs = avg_gain / avg_loss.replace(0, float("nan"))
+    return 100 - (100 / (1 + rs))
+
+
+def _macd(
+    close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9
+) -> tuple[pd.Series, pd.Series]:
+    ema_fast = close.ewm(span=fast, adjust=False).mean()
+    ema_slow = close.ewm(span=slow, adjust=False).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    return macd_line, signal_line
 
 from ..broker.base import AbstractBroker
 from ..core.database import AsyncSessionLocal
@@ -167,22 +188,16 @@ class AutoResearcher:
         current_price = float(market.price)
 
         # ── 지표 계산 ──────────────────────────────
-        rsi_series = ta.rsi(df["close"], length=14)
-        rsi = float(rsi_series.iloc[-1]) if rsi_series is not None and not rsi_series.empty else None
+        rsi_series = _rsi(df["close"], period=14)
+        rsi = float(rsi_series.iloc[-1]) if not rsi_series.empty and pd.notna(rsi_series.iloc[-1]) else None
 
         ma5 = float(df["close"].rolling(5).mean().iloc[-1])
         ma20 = float(df["close"].rolling(20).mean().iloc[-1])
         ma60_val = float(df["close"].rolling(60).mean().iloc[-1]) if len(df) >= 60 else None
 
-        macd_df = ta.macd(df["close"], fast=12, slow=26, signal=9)
-        macd_val = macd_signal_val = None
-        if macd_df is not None and not macd_df.empty:
-            macd_col = [c for c in macd_df.columns if "MACD_" in c and "MACDs_" not in c and "MACDh_" not in c]
-            sig_col = [c for c in macd_df.columns if "MACDs_" in c]
-            if macd_col:
-                macd_val = float(macd_df[macd_col[0]].iloc[-1])
-            if sig_col:
-                macd_signal_val = float(macd_df[sig_col[0]].iloc[-1])
+        macd_line, signal_line = _macd(df["close"], fast=12, slow=26, signal=9)
+        macd_val = float(macd_line.iloc[-1]) if pd.notna(macd_line.iloc[-1]) else None
+        macd_signal_val = float(signal_line.iloc[-1]) if pd.notna(signal_line.iloc[-1]) else None
 
         period_slice = df["high"].tail(period_days)
         high_period = float(period_slice.max()) if not period_slice.empty else None

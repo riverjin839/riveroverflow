@@ -21,7 +21,7 @@ python-kis                 # 한국투자증권 Open API
 # Trading / Technical analysis
 pandas==2.2.2
 numpy==1.26.4
-pandas-ta==0.3.14b0        # Technical indicators (RSI, MACD, MA, etc.)
+# pandas-ta==0.3.14b0  # pandas 2.x 호환 문제로 제거 → researcher.py 내 순수 pandas 구현으로 대체
 
 # Scheduling
 apscheduler==3.10.4
