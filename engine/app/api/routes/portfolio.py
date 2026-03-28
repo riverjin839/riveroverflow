@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import Annotated
 
 from ...broker.base import AbstractBroker
-from ...broker.kis import KISBroker
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
