@@ -1,10 +1,13 @@
 import { useEffect } from 'react'
 import api from './api'
 import { useResearchStore } from '../models/researchStore'
+import type { ConditionSpec } from '../models/researchStore'
 
 export function useResearch() {
-  const { results, loading, lastScanned, setResults, setLoading, setLastScanned } =
-    useResearchStore()
+  const {
+    results, loading, lastScanned, setResults, setLoading, setLastScanned,
+    conditionResults, conditionLoading, setConditionResults, setConditionLoading,
+  } = useResearchStore()
 
   useEffect(() => {
     fetchLatest()
@@ -43,5 +46,21 @@ export function useResearch() {
     }
   }
 
-  return { results, loading, lastScanned, runScan, fetchLatest }
+  async function runConditionScan(symbols: string[] | undefined, conditions: ConditionSpec[]) {
+    setConditionLoading(true)
+    try {
+      const res = await api.post('/api/v1/screener/conditions', {
+        symbols: symbols && symbols.length > 0 ? symbols : null,
+        conditions,
+        period_days: 30,
+      })
+      setConditionResults(res.data)
+    } catch (e) {
+      console.error('조건 스크리닝 실패:', e)
+    } finally {
+      setConditionLoading(false)
+    }
+  }
+
+  return { results, loading, lastScanned, runScan, fetchLatest, conditionResults, conditionLoading, runConditionScan }
 }

@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { FlaskConical, Search, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { FlaskConical, Search, Loader2, ChevronDown, ChevronUp, Plus, X, Filter } from 'lucide-react'
 import clsx from 'clsx'
 import { useResearch } from '../../presenters/useResearch'
-import type { ResearchResult } from '../../models/researchStore'
+import type { ResearchResult, ConditionSpec, ConditionResult } from '../../models/researchStore'
 import { formatKRW } from '../../presenters/format'
 
 // ── 스코어 배지 ──────────────────────────────────────
@@ -156,9 +156,254 @@ const FILTER_OPTIONS = [
   { key: 'spike', label: '거래량급증' },
 ]
 
+// ══════════════════════════════════════════════════════
+// ── 조건 스크리닝 탭 ──────────────────────────────────
+// ══════════════════════════════════════════════════════
+
+const CONDITION_TYPE_OPTIONS = [
+  { value: 'consecutive_bullish', label: 'N일 연속 양봉', hasThreshold: false, hasWick: false },
+  { value: 'consecutive_bearish_no_wick', label: 'N일 연속 꼬리없는 음봉', hasThreshold: false, hasWick: true },
+  { value: 'trading_value_consecutive', label: 'N일 연속 거래대금', hasThreshold: true, hasWick: false },
+] as const
+
+function conditionLabel(c: ConditionSpec): string {
+  if (c.type === 'consecutive_bullish') return `${c.n}일 연속 양봉`
+  if (c.type === 'consecutive_bearish_no_wick') return `${c.n}일 연속 꼬리없는 음봉 (꼬리 ${c.wick_pct ?? 1}% 이내)`
+  if (c.type === 'trading_value_consecutive') return `거래대금 ${c.n}일 연속 ${(c.threshold ?? 0).toLocaleString()}억 이상`
+  return c.type
+}
+
+function ConditionScreenerTab() {
+  const { conditionResults, conditionLoading, runConditionScan } = useResearch()
+  const [conditions, setConditions] = useState<ConditionSpec[]>([])
+  const [customSymbols, setCustomSymbols] = useState('')
+
+  // 빌더 상태
+  const [buildType, setBuildType] = useState<ConditionSpec['type']>('consecutive_bullish')
+  const [buildN, setBuildN] = useState(3)
+  const [buildThreshold, setBuildThreshold] = useState(3000)
+  const [buildWickPct, setBuildWickPct] = useState(1.0)
+
+  const selectedMeta = CONDITION_TYPE_OPTIONS.find((o) => o.value === buildType)!
+
+  function addCondition() {
+    const spec: ConditionSpec = {
+      type: buildType,
+      n: buildN,
+      ...(selectedMeta.hasThreshold && { threshold: buildThreshold }),
+      ...(selectedMeta.hasWick && { wick_pct: buildWickPct }),
+    }
+    setConditions((prev) => [...prev, spec])
+  }
+
+  function removeCondition(idx: number) {
+    setConditions((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  function handleScan() {
+    if (conditions.length === 0) return
+    const syms = customSymbols.trim()
+      ? customSymbols.split(',').map((s) => s.trim()).filter(Boolean)
+      : undefined
+    runConditionScan(syms, conditions)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* 조건 빌더 */}
+      <div className="card space-y-4">
+        <div className="text-sm font-semibold text-white flex items-center gap-2">
+          <Filter size={15} className="text-brand-500" />
+          조건 추가
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 조건 타입 */}
+          <div className="sm:col-span-2">
+            <label className="block text-xs text-slate-400 mb-1">조건 타입</label>
+            <select
+              value={buildType}
+              onChange={(e) => setBuildType(e.target.value as ConditionSpec['type'])}
+              className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+            >
+              {CONDITION_TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 연속 일수 */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">연속 일수</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={buildN}
+              onChange={(e) => setBuildN(Math.max(1, Math.min(20, Number(e.target.value))))}
+              className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+            />
+          </div>
+
+          {/* 거래대금 기준 (조건별 노출) */}
+          {selectedMeta.hasThreshold && (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">거래대금 기준 (억)</label>
+              <input
+                type="number"
+                min={0}
+                value={buildThreshold}
+                onChange={(e) => setBuildThreshold(Number(e.target.value))}
+                className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+              />
+            </div>
+          )}
+
+          {/* 꼬리 허용 % */}
+          {selectedMeta.hasWick && (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">꼬리 허용 (%)</label>
+              <input
+                type="number"
+                min={0}
+                max={10}
+                step={0.5}
+                value={buildWickPct}
+                onChange={(e) => setBuildWickPct(Number(e.target.value))}
+                className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+              />
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={addCondition}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-card border border-surface-border text-sm text-slate-300 hover:text-white hover:border-brand-500 transition-colors"
+        >
+          <Plus size={14} />
+          조건 추가
+        </button>
+
+        {/* 추가된 조건 목록 */}
+        {conditions.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="text-xs text-slate-500">추가된 조건 (AND 논리로 모두 만족하는 종목만 반환)</div>
+            <div className="flex flex-wrap gap-2">
+              {conditions.map((c, i) => (
+                <span
+                  key={i}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-500/20 text-brand-400 border border-brand-500/30"
+                >
+                  {conditionLabel(c)}
+                  <button onClick={() => removeCondition(i)} className="hover:text-white">
+                    <X size={11} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 종목 입력 + 실행 */}
+      <div className="card space-y-3">
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">커스텀 종목 (쉼표 구분)</label>
+          <input
+            type="text"
+            value={customSymbols}
+            onChange={(e) => setCustomSymbols(e.target.value)}
+            placeholder="005930,000660 (비우면 KOSPI 기본 20종목)"
+            className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500"
+          />
+        </div>
+        <button
+          onClick={handleScan}
+          disabled={conditionLoading || conditions.length === 0}
+          className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {conditionLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+          {conditionLoading ? '스크리닝 중...' : '스크리닝 실행'}
+        </button>
+        {conditions.length === 0 && (
+          <p className="text-xs text-slate-500">조건을 1개 이상 추가한 후 실행하세요.</p>
+        )}
+      </div>
+
+      {/* 결과 테이블 */}
+      {conditionResults.length > 0 && (
+        <div className="card p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-surface-border flex items-center justify-between">
+            <span className="text-sm font-semibold text-white">매칭 종목</span>
+            <span className="text-xs text-slate-400">{conditionResults.length}종목 매칭</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-surface-border text-left text-xs text-slate-500">
+                  <th className="px-4 py-2.5 font-medium">종목</th>
+                  <th className="px-4 py-2.5 font-medium text-right">현재가</th>
+                  <th className="px-4 py-2.5 font-medium text-right hidden sm:table-cell">거래량</th>
+                  <th className="px-4 py-2.5 font-medium">매칭 조건</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-border">
+                {conditionResults.map((r) => (
+                  <ConditionResultRow key={r.symbol} r={r} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {!conditionLoading && conditionResults.length === 0 && conditions.length > 0 && (
+        <div className="card text-center py-8 text-slate-500 text-sm">
+          조건을 만족하는 종목이 없습니다.
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ConditionResultRow({ r }: { r: ConditionResult }) {
+  return (
+    <tr className="hover:bg-surface-border/30 transition-colors">
+      <td className="px-4 py-3">
+        <div className="font-medium text-white text-sm">{r.name}</div>
+        <div className="text-xs text-slate-500 font-mono">{r.symbol}</div>
+      </td>
+      <td className="px-4 py-3 text-right font-mono text-white text-sm">
+        {formatKRW(r.current_price)}
+      </td>
+      <td className="px-4 py-3 text-right text-slate-400 text-xs hidden sm:table-cell font-mono">
+        {r.volume.toLocaleString()}
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-1">
+          {r.matched_conditions.map((c, i) => (
+            <span
+              key={i}
+              className="px-1.5 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400"
+            >
+              {c}
+            </span>
+          ))}
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+// ══════════════════════════════════════════════════════
 // ── 페이지 ───────────────────────────────────────────
+// ══════════════════════════════════════════════════════
+
+type Tab = 'analysis' | 'conditions'
+
 export default function ResearchPage() {
   const { results, loading, lastScanned, runScan } = useResearch()
+  const [activeTab, setActiveTab] = useState<Tab>('analysis')
   const [customSymbols, setCustomSymbols] = useState('')
   const [periodDays, setPeriodDays] = useState(60)
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set())
@@ -201,99 +446,128 @@ export default function ResearchPage() {
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="card space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
-            <label className="block text-xs text-slate-400 mb-1">커스텀 종목 (쉼표 구분)</label>
-            <input
-              type="text"
-              value={customSymbols}
-              onChange={(e) => setCustomSymbols(e.target.value)}
-              placeholder="005930,000660 (비우면 KOSPI 기본 20종목)"
-              className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">분석 기간</label>
-            <select
-              value={periodDays}
-              onChange={(e) => setPeriodDays(Number(e.target.value))}
-              className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
-            >
-              <option value={20}>20일 (1개월)</option>
-              <option value={60}>60일 (3개월)</option>
-              <option value={120}>120일 (6개월)</option>
-              <option value={252}>252일 (52주)</option>
-            </select>
-          </div>
-        </div>
-
-        <button
-          onClick={handleScan}
-          disabled={loading}
-          className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-          {loading ? '분석 중...' : '리서치 실행'}
-        </button>
+      {/* 탭 */}
+      <div className="flex gap-1 border-b border-surface-border">
+        {[
+          { key: 'analysis' as Tab, label: '기본 분석' },
+          { key: 'conditions' as Tab, label: '조건 스크리닝' },
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key)}
+            className={clsx(
+              'px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors',
+              activeTab === t.key
+                ? 'border-brand-500 text-white'
+                : 'border-transparent text-slate-400 hover:text-white'
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* 시그널 필터 */}
-      {results.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {FILTER_OPTIONS.map((f) => (
+      {/* ── 기본 분석 탭 ── */}
+      {activeTab === 'analysis' && (
+        <>
+          {/* Controls */}
+          <div className="card space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2">
+                <label className="block text-xs text-slate-400 mb-1">커스텀 종목 (쉼표 구분)</label>
+                <input
+                  type="text"
+                  value={customSymbols}
+                  onChange={(e) => setCustomSymbols(e.target.value)}
+                  placeholder="005930,000660 (비우면 KOSPI 기본 20종목)"
+                  className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">분석 기간</label>
+                <select
+                  value={periodDays}
+                  onChange={(e) => setPeriodDays(Number(e.target.value))}
+                  className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
+                >
+                  <option value={20}>20일 (1개월)</option>
+                  <option value={60}>60일 (3개월)</option>
+                  <option value={120}>120일 (6개월)</option>
+                  <option value={252}>252일 (52주)</option>
+                </select>
+              </div>
+            </div>
+
             <button
-              key={f.key}
-              onClick={() => toggleFilter(f.key)}
-              className={clsx(
-                'px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                activeFilters.has(f.key)
-                  ? 'bg-brand-500 text-white'
-                  : 'bg-surface-card text-slate-400 border border-surface-border hover:text-white'
-              )}
+              onClick={handleScan}
+              disabled={loading}
+              className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {f.label}
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+              {loading ? '분석 중...' : '리서치 실행'}
             </button>
-          ))}
-        </div>
+          </div>
+
+          {/* 시그널 필터 */}
+          {results.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {FILTER_OPTIONS.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => toggleFilter(f.key)}
+                  className={clsx(
+                    'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                    activeFilters.has(f.key)
+                      ? 'bg-brand-500 text-white'
+                      : 'bg-surface-card text-slate-400 border border-surface-border hover:text-white'
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 결과 테이블 */}
+          {filteredResults.length > 0 && (
+            <div className="card p-0 overflow-hidden">
+              <div className="px-4 py-3 border-b border-surface-border flex items-center justify-between">
+                <span className="text-sm font-semibold text-white">리서치 결과</span>
+                <span className="text-xs text-slate-400">{filteredResults.length}종목 · 클릭해서 상세 확인</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-surface-border text-left text-xs text-slate-500">
+                      <th className="px-4 py-2.5 font-medium w-16">스코어</th>
+                      <th className="px-4 py-2.5 font-medium">종목</th>
+                      <th className="px-4 py-2.5 font-medium hidden sm:table-cell">시그널</th>
+                      <th className="px-4 py-2.5 font-medium hidden md:table-cell">날짜</th>
+                      <th className="px-4 py-2.5 w-8" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-border">
+                    {filteredResults.map((r) => (
+                      <ResultRow key={`${r.symbol}-${r.research_date}`} r={r} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {!loading && results.length === 0 && (
+            <div className="card text-center py-12 text-slate-500">
+              <FlaskConical size={40} className="mx-auto mb-3 opacity-30" />
+              <p>리서치 실행 버튼을 눌러 종목 분석을 시작하세요.</p>
+              <p className="text-xs mt-1">장 종료 후 (15:45 KST) 매일 자동으로도 실행됩니다.</p>
+            </div>
+          )}
+        </>
       )}
 
-      {/* 결과 테이블 */}
-      {filteredResults.length > 0 && (
-        <div className="card p-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-surface-border flex items-center justify-between">
-            <span className="text-sm font-semibold text-white">리서치 결과</span>
-            <span className="text-xs text-slate-400">{filteredResults.length}종목 · 클릭해서 상세 확인</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-surface-border text-left text-xs text-slate-500">
-                  <th className="px-4 py-2.5 font-medium w-16">스코어</th>
-                  <th className="px-4 py-2.5 font-medium">종목</th>
-                  <th className="px-4 py-2.5 font-medium hidden sm:table-cell">시그널</th>
-                  <th className="px-4 py-2.5 font-medium hidden md:table-cell">날짜</th>
-                  <th className="px-4 py-2.5 w-8" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-border">
-                {filteredResults.map((r) => (
-                  <ResultRow key={`${r.symbol}-${r.research_date}`} r={r} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {!loading && results.length === 0 && (
-        <div className="card text-center py-12 text-slate-500">
-          <FlaskConical size={40} className="mx-auto mb-3 opacity-30" />
-          <p>리서치 실행 버튼을 눌러 종목 분석을 시작하세요.</p>
-          <p className="text-xs mt-1">장 종료 후 (15:45 KST) 매일 자동으로도 실행됩니다.</p>
-        </div>
-      )}
+      {/* ── 조건 스크리닝 탭 ── */}
+      {activeTab === 'conditions' && <ConditionScreenerTab />}
     </div>
   )
 }

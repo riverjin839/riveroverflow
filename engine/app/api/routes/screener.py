@@ -2,8 +2,11 @@ import asyncio
 import logging
 from typing import Optional
 
+import pandas as pd
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
+
+from ...engine.condition_engine import ConditionSpec, evaluate_conditions
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +65,94 @@ async def _scan_symbol(
     except Exception as e:
         logger.warning("신고가 스캔 실패 symbol=%s: %s", symbol, e)
         return None
+
+
+class ConditionScanRequest(BaseModel):
+    symbols: Optional[list[str]] = None   # None → DEFAULT_SYMBOLS
+    conditions: list[ConditionSpec]
+    period_days: int = 30                 # OHLCV 조회 기간 (충분한 여유분 포함)
+
+
+class ConditionScanResult(BaseModel):
+    symbol: str
+    name: str
+    current_price: float
+    volume: int
+    matched_conditions: list[str]   # 한글 설명
+
+
+async def _condition_scan_symbol(
+    broker,
+    symbol: str,
+    conditions: list[ConditionSpec],
+    period_days: int,
+) -> Optional[ConditionScanResult]:
+    try:
+        fetch_count = max(period_days + 20, 40)
+        ohlcv_data, market = await asyncio.gather(
+            broker.get_ohlcv(symbol, "D", fetch_count),
+            broker.get_market_price(symbol),
+        )
+        if not ohlcv_data or len(ohlcv_data) < 2:
+            return None
+
+        df = pd.DataFrame(ohlcv_data)
+        for col in ("open", "high", "low", "close", "volume"):
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df = df.dropna(subset=["open", "high", "low", "close", "volume"])
+
+        if not evaluate_conditions(df, conditions):
+            return None
+
+        return ConditionScanResult(
+            symbol=symbol,
+            name=market.name,
+            current_price=float(market.price),
+            volume=int(market.volume),
+            matched_conditions=[c.label() for c in conditions],
+        )
+    except Exception as e:
+        logger.warning("조건 스캔 실패 symbol=%s: %s", symbol, e)
+        return None
+
+
+@router.post("/conditions", response_model=list[ConditionScanResult])
+async def scan_conditions(body: ConditionScanRequest, request: Request):
+    """커스텀 조건 스크리닝.
+
+    - conditions: 평가할 조건 목록 (AND 논리)
+    - symbols: 종목코드 목록 (없으면 KOSPI 기본 20종목)
+    - period_days: OHLCV 조회 기간 (기본 30일)
+    """
+    broker = getattr(request.app.state, "broker", None)
+    if broker is None:
+        raise HTTPException(status_code=503, detail="브로커가 초기화되지 않았습니다.")
+
+    if not body.conditions:
+        raise HTTPException(status_code=422, detail="최소 1개 이상의 조건을 입력해야 합니다.")
+
+    if body.period_days < 5 or body.period_days > 504:
+        raise HTTPException(status_code=422, detail="period_days는 5~504 사이여야 합니다.")
+
+    symbol_list = body.symbols if body.symbols else DEFAULT_SYMBOLS
+
+    invalid = [s for s in symbol_list if not s.isdigit() or len(s) != 6]
+    if invalid:
+        raise HTTPException(
+            status_code=422,
+            detail=f"종목코드는 6자리 숫자여야 합니다. 잘못된 입력: {', '.join(invalid)} (예: 005930)",
+        )
+
+    tasks = [
+        _condition_scan_symbol(broker, sym, body.conditions, body.period_days)
+        for sym in symbol_list
+    ]
+    results = await asyncio.gather(*tasks)
+
+    hits = [r for r in results if r is not None]
+    hits.sort(key=lambda r: r.current_price, reverse=True)
+    logger.info("조건 스크리닝 완료: %d/%d 종목 매칭", len(hits), len(symbol_list))
+    return hits
 
 
 @router.get("/new-highs", response_model=list[NewHighResult])
