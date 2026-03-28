@@ -15,7 +15,7 @@ pydantic==2.7.1
 pydantic-settings==2.3.1
 
 # Korean broker APIs
-python-kis==1.0.18         # 한국투자증권 Open API
+python-kis                 # 한국투자증권 Open API
 # mojito2==0.1.11          # alternative broker library
 
 # Trading / Technical analysis
