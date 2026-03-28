@@ -92,6 +92,14 @@ async def get_new_highs(
         else DEFAULT_SYMBOLS
     )
 
+    # 6자리 숫자 종목코드만 허용 (종목명 입력 방지)
+    invalid = [s for s in symbol_list if not s.isdigit() or len(s) != 6]
+    if invalid:
+        raise HTTPException(
+            status_code=422,
+            detail=f"종목코드는 6자리 숫자여야 합니다. 잘못된 입력: {', '.join(invalid)} (예: 005930)",
+        )
+
     tasks = [
         _scan_symbol(broker, sym, period_days, threshold_pct)
         for sym in symbol_list

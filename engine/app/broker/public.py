@@ -14,9 +14,6 @@ from .base import (
     MarketPrice,
     OrderRequest,
     OrderResult,
-    OrderSide,
-    OrderStatus,
-    OrderType,
     Position,
     RealtimeCallback,
 )
@@ -32,7 +29,7 @@ class PublicBroker(AbstractBroker):
         return "PublicKRX"
 
     async def authenticate(self) -> None:
-        pass  # 인증 불필요
+        pass
 
     async def get_ohlcv(
         self,
@@ -43,7 +40,6 @@ class PublicBroker(AbstractBroker):
         from pykrx import stock as krx
 
         end = date.today()
-        # 거래일 기준 count봉 확보를 위해 달력일 기준 2배 요청
         start = end - timedelta(days=count * 2)
 
         def _fetch():
@@ -52,6 +48,8 @@ class PublicBroker(AbstractBroker):
                 end.strftime("%Y%m%d"),
                 symbol,
             )
+            if df is None or df.empty:
+                return None
             return df.tail(count)
 
         df = await asyncio.get_event_loop().run_in_executor(None, _fetch)
@@ -59,27 +57,34 @@ class PublicBroker(AbstractBroker):
         if df is None or df.empty:
             return []
 
-        return [
-            {
-                "time": str(idx.date()),
-                "open": float(row["시가"]),
-                "high": float(row["고가"]),
-                "low": float(row["저가"]),
-                "close": float(row["종가"]),
-                "volume": int(row["거래량"]),
-            }
-            for idx, row in df.iterrows()
-        ]
+        result = []
+        for idx, row in df.iterrows():
+            try:
+                result.append({
+                    "time": str(idx.date()),
+                    "open": float(row["시가"]),
+                    "high": float(row["고가"]),
+                    "low": float(row["저가"]),
+                    "close": float(row["종가"]),
+                    "volume": int(row["거래량"]),
+                })
+            except (KeyError, ValueError):
+                continue
+        return result
 
     async def get_market_price(self, symbol: str) -> MarketPrice:
         from pykrx import stock as krx
 
         def _fetch_name():
-            return krx.get_market_ticker_name(symbol)
+            try:
+                name = krx.get_market_ticker_name(symbol)
+                return name if name else symbol
+            except Exception:
+                return symbol
 
         def _fetch_ohlcv():
             end = date.today()
-            start = end - timedelta(days=10)
+            start = end - timedelta(days=14)
             return krx.get_market_ohlcv_by_date(
                 start.strftime("%Y%m%d"),
                 end.strftime("%Y%m%d"),
@@ -94,24 +99,27 @@ class PublicBroker(AbstractBroker):
         if df is None or df.empty:
             raise RuntimeError(f"{symbol} 시세 데이터를 가져올 수 없습니다.")
 
-        row = df.iloc[-1]
-        prev_close = float(df.iloc[-2]["종가"]) if len(df) >= 2 else float(row["종가"])
-        current = float(row["종가"])
-        change = current - prev_close
-        change_pct = (change / prev_close * 100) if prev_close else 0.0
+        try:
+            row = df.iloc[-1]
+            prev_close = float(df.iloc[-2]["종가"]) if len(df) >= 2 else float(row["종가"])
+            current = float(row["종가"])
+            change = current - prev_close
+            change_pct = (change / prev_close * 100) if prev_close else 0.0
 
-        return MarketPrice(
-            symbol=symbol,
-            name=name or symbol,
-            price=Decimal(str(current)),
-            open=Decimal(str(row["시가"])),
-            high=Decimal(str(row["고가"])),
-            low=Decimal(str(row["저가"])),
-            volume=int(row["거래량"]),
-            change=Decimal(str(round(change, 2))),
-            change_pct=round(change_pct, 2),
-            timestamp=datetime.utcnow(),
-        )
+            return MarketPrice(
+                symbol=symbol,
+                name=name,
+                price=Decimal(str(current)),
+                open=Decimal(str(row["시가"])),
+                high=Decimal(str(row["고가"])),
+                low=Decimal(str(row["저가"])),
+                volume=int(row["거래량"]),
+                change=Decimal(str(round(change, 2))),
+                change_pct=round(change_pct, 2),
+                timestamp=datetime.utcnow(),
+            )
+        except (KeyError, IndexError, ValueError) as e:
+            raise RuntimeError(f"{symbol} 데이터 파싱 실패: {e}") from e
 
     async def get_balance(self) -> Balance:
         return Balance(
@@ -134,7 +142,7 @@ class PublicBroker(AbstractBroker):
     async def subscribe_realtime(
         self, symbols: list[str], callback: RealtimeCallback
     ) -> None:
-        pass  # 실시간 미지원
+        pass
 
     async def unsubscribe_realtime(self, symbols: list[str]) -> None:
         pass
