@@ -12,7 +12,7 @@ except ImportError:
     KISBroker = None  # python-kis 미설치 시 KIS 브로커 비활성화
 from .engine.runner import TradingEngine
 from .engine.scheduler import MarketScheduler
-from .api.routes import trades, strategies, portfolio, screener, ontology, research
+from .api.routes import trades, strategies, portfolio, screener, ontology, research, reports
 from .engine.researcher import AutoResearcher
 from .models.ontology import seed_ontology
 
@@ -172,3 +172,4 @@ app.include_router(portfolio.router, prefix="/api/v1")
 app.include_router(screener.router, prefix="/api/v1")
 app.include_router(ontology.router, prefix="/api/v1")
 app.include_router(research.router, prefix="/api/v1")
+app.include_router(reports.router, prefix="/api/v1")

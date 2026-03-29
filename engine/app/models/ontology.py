@@ -12,7 +12,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Float,
-    ForeignKey, Index, Integer, String, Text,
+    ForeignKey, Index, Integer, String, Text, UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
@@ -118,6 +118,35 @@ class ResearchResult(Base):
     __table_args__ = (
         Index("ix_research_symbol_date", "symbol", "research_date"),
         Index("ix_research_date", "research_date"),
+    )
+
+
+# ──────────────────────────────────────────────
+# 증권사 리포트
+# ──────────────────────────────────────────────
+class SecuritiesReport(Base):
+    __tablename__ = "securities_reports"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(10), nullable=True, index=True)        # 종목코드 (6자리)
+    company_name = Column(String(200), default="")                 # 종목명
+    securities_firm = Column(String(100), default="")             # 증권사
+    title = Column(String(500), default="")                       # 리포트 제목
+    analyst = Column(String(100), nullable=True)                  # 애널리스트
+    target_price = Column(Float, nullable=True)                   # 목표주가 (원)
+    rating = Column(String(50), nullable=True)                    # 투자의견 (BUY/HOLD/SELL)
+    report_date = Column(Date, nullable=False, index=True)        # 발행일
+    url = Column(String(1000), default="")                        # 원문 링크
+    source = Column(String(50), default="naver")                  # 출처
+    nid = Column(String(50), nullable=True)                       # NAVER report ID
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_report_symbol_date", "symbol", "report_date"),
+        Index("ix_report_date", "report_date"),
+        Index("ix_report_firm", "securities_firm"),
+        UniqueConstraint("nid", "source", name="uq_report_nid_source"),
     )
 
 
