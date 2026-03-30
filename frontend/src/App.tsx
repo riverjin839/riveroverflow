@@ -8,6 +8,7 @@ import ScreenerPage from './views/screener/ScreenerPage'
 import ResearchPage from './views/research/ResearchPage'
 import OntologyPage from './views/ontology/OntologyPage'
 import SettingsPage from './views/settings/SettingsPage'
+import ReportsPage from './views/reports/ReportsPage'
 import LoginPage from './views/auth/LoginPage'
 import { useAuthStore } from './models/authStore'
 
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="research"  element={<ResearchPage />} />
           <Route path="ontology"  element={<OntologyPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="reports"   element={<ReportsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
