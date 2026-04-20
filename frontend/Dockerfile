@@ -6,7 +6,9 @@ COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
 EXPOSE 3000
-CMD ["npm", "run", "dev"]
+# package.json 이 변경되면 컨테이너 기동 시 자동으로 npm install 하여
+# 익명 node_modules 볼륨과 불일치 문제를 자동 해소한다.
+CMD ["sh", "-c", "npm install --no-audit --no-fund && npm run dev"]
 
 # ── Stage 2: Build ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
