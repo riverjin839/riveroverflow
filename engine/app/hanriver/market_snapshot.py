@@ -1,12 +1,14 @@
 """HANRIVER 시황 데이터 수집 서비스.
 
-- KR 지수/업종: pykrx (KRX 일봉, 당일 종가는 장 마감 후 업데이트됨)
+- KR 지수: 네이버 금융 모바일 API (실시간 현재가 + 전일 대비)
+  → pykrx 는 일봉 종가(T-1)만 가능하여 장중 값이 맞지 않음
 - 해외 지수/환율/원자재/VIX/EWY: yfinance
 - F&G: alternative.me (크립토 F&G, 참고용)
-- 실데이터 실패 시 스텁으로 fallback 하고 stale=True 로 마킹
+- 업종 히트맵: pykrx 섹터 지수 (일봉 종가 기준)
+- 실데이터 실패 시 stub fallback + stale=True 마킹
 
 카테고리별 TTL:
-- KR 지수: 30초
+- KR 지수: 10초 (장중 실시간성 우선)
 - 해외 지수/환율/원자재/심리: 60초
 - 업종 히트맵: 60초
 """
@@ -20,7 +22,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
-from . import fetchers
+from . import fetchers, naver
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +168,15 @@ def _merge_with_stub(
 
 
 async def _load_kr_indices() -> list[Quote]:
-    real = await fetchers.fetch_kr_indices()
+    codes = [c for c, _ in KR_INDICES]
+    # 네이버 우선 (실시간) — 실패한 종목은 pykrx(일봉 종가)로 보충
+    real = await naver.fetch_naver_indices(codes)
+    missing = [c for c in codes if c not in real]
+    if missing:
+        fallback = await fetchers.fetch_kr_indices()
+        for c in missing:
+            if c in fallback:
+                real[c] = fallback[c]
     return _merge_with_stub(KR_INDICES, real)
 
 
@@ -203,7 +213,7 @@ async def _load_sectors() -> list[Quote]:
 # ────────────────────────────────────────────────────────────
 
 async def get_kr_indices() -> list[Quote]:
-    return await _cache.get_or_compute("kr_indices", 30.0, _load_kr_indices)
+    return await _cache.get_or_compute("kr_indices", 10.0, _load_kr_indices)
 
 
 async def get_global_indices() -> list[Quote]:

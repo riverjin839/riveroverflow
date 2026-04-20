@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { hanriverApi } from '../../presenters/useHanriverPhase2'
+import StockSearchInput from '../../components/StockSearchInput'
 
 export default function ReplayPage() {
   const [symbol, setSymbol] = useState('005930')
@@ -23,7 +24,7 @@ export default function ReplayPage() {
 
       <section className="bg-surface-card rounded-lg border border-surface-border p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <input className="input" value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="005930" />
+          <StockSearchInput value={symbol} onChange={setSymbol} placeholder="종목명/코드 검색" />
           <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           <div />
           <button className="btn-primary" onClick={run} disabled={busy}>

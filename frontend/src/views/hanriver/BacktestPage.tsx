@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { hanriverApi, type BacktestSummary } from '../../presenters/useHanriverPhase2'
+import StockSearchInput from '../../components/StockSearchInput'
 
 export default function BacktestPage() {
   const [list, setList] = useState<BacktestSummary[]>([])
@@ -46,7 +47,11 @@ export default function BacktestPage() {
       <section className="bg-surface-card rounded-lg border border-surface-border p-4">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
           <input className="input" placeholder="이름" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <input className="input" placeholder="종목 코드" value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value })} />
+          <StockSearchInput
+            value={form.symbol}
+            onChange={(v) => setForm((f) => ({ ...f, symbol: v }))}
+            placeholder="종목명/코드 검색"
+          />
           <select className="input" value={form.strategy} onChange={(e) => setForm({ ...form, strategy: e.target.value })}>
             <option value="ma_cross">MA Cross</option>
             <option value="rsi">RSI</option>

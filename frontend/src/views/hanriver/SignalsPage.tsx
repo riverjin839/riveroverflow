@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { hanriverApi, type AiSignal } from '../../presenters/useHanriverPhase2'
+import StockSearchInput from '../../components/StockSearchInput'
 
 export default function SignalsPage() {
   const [signals, setSignals] = useState<AiSignal[]>([])
@@ -35,7 +36,11 @@ export default function SignalsPage() {
       <section className="bg-surface-card rounded-lg border border-surface-border p-4">
         <h2 className="text-sm font-semibold text-slate-200 mb-3">시그널 생성</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <input className="input" placeholder="005930" value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value })} />
+          <StockSearchInput
+            value={form.symbol}
+            onChange={(v) => setForm((f) => ({ ...f, symbol: v }))}
+            placeholder="종목명/코드 검색"
+          />
           <select className="input" value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}>
             <option value="day">당일 매매 (데이)</option>
             <option value="swing">주간 매매 (눌림 스윙)</option>

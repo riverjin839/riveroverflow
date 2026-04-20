@@ -26,6 +26,7 @@ from ...hanriver import (
     flow as flow_mod,
     disclosures as disclosures_mod,
     indicators,
+    naver as naver_mod,
 )
 from ...hanriver.ai import signal_generator, report_builder, news_scoring, coach
 from ...hanriver import journal as journal_mod
@@ -92,6 +93,19 @@ async def get_sentiment():
 @router.get("/heatmap/sectors", response_model=list[QuoteResponse])
 async def get_sector_heatmap():
     return [_to_quote(q) for q in await market_snapshot.get_sector_heatmap()]
+
+
+class SearchResult(BaseModel):
+    symbol: str
+    name: str
+    market: str
+
+
+@router.get("/stocks/search", response_model=list[SearchResult])
+async def search_stocks(q: str = Query(..., min_length=1, max_length=40), limit: int = 10):
+    """네이버 자동완성 기반 종목 검색. 한글명/영문/코드 모두 지원."""
+    items = await naver_mod.search_stock(q, limit=limit)
+    return [SearchResult(**it) for it in items]
 
 
 @router.get("/news", response_model=list[NewsResponse])

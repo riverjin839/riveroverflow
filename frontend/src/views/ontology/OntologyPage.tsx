@@ -1,8 +1,11 @@
-import { useState } from 'react'
-import { Network, ChevronRight, ToggleLeft, ToggleRight, RefreshCw } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
+import { Network, ChevronRight, ToggleLeft, ToggleRight, RefreshCw, Box } from 'lucide-react'
 import clsx from 'clsx'
 import { useOntology } from '../../presenters/useOntology'
 import type { OntologyRule } from '../../models/ontologyStore'
+
+// 3D 뷰는 three.js 를 번들에 포함하므로 코드 분할
+const Ontology3DView = lazy(() => import('./Ontology3DView'))
 
 // ── 타입 색상 ────────────────────────────────────────
 const TYPE_COLORS: Record<string, string> = {
@@ -64,7 +67,7 @@ function RuleRow({ rule, onToggle }: { rule: OntologyRule; onToggle: (id: string
 }
 
 // ── 탭 ──────────────────────────────────────────────
-type Tab = 'summary' | 'objects' | 'links' | 'rules'
+type Tab = 'summary' | 'graph3d' | 'objects' | 'links' | 'rules'
 
 // ── 페이지 ──────────────────────────────────────────
 export default function OntologyPage() {
@@ -72,8 +75,9 @@ export default function OntologyPage() {
   const [tab, setTab] = useState<Tab>('summary')
   const [typeFilter, setTypeFilter] = useState<string>('all')
 
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: Tab; label: string; icon?: typeof Box }[] = [
     { key: 'summary', label: '요약' },
+    { key: 'graph3d', label: '3D 그래프', icon: Box },
     { key: 'objects', label: `객체 (${objects.length})` },
     { key: 'links', label: `관계 (${links.length})` },
     { key: 'rules', label: `규칙 (${rules.length})` },
@@ -107,12 +111,13 @@ export default function OntologyPage() {
             key={t.key}
             onClick={() => setTab(t.key)}
             className={clsx(
-              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px inline-flex items-center gap-1.5',
               tab === t.key
                 ? 'border-brand-500 text-brand-500'
                 : 'border-transparent text-slate-400 hover:text-white'
             )}
           >
+            {t.icon && <t.icon size={14} />}
             {t.label}
           </button>
         ))}
@@ -151,6 +156,19 @@ export default function OntologyPage() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* ── 3D 그래프 탭 ── */}
+      {tab === 'graph3d' && (
+        <Suspense
+          fallback={
+            <div className="h-[600px] flex items-center justify-center text-sm text-slate-500 border border-surface-border rounded-lg bg-[#0b1220]">
+              3D 엔진 로딩 중…
+            </div>
+          }
+        >
+          <Ontology3DView objects={objects} links={links} />
+        </Suspense>
       )}
 
       {/* ── 객체 탭 ── */}
