@@ -36,6 +36,9 @@ beautifulsoup4==4.12.3
 scikit-learn==1.5.0
 # torch==2.3.0             # uncomment for LSTM strategies
 
+# LLM (HANRIVER AI 엔진; ANTHROPIC_API_KEY 미설정 시 stub 응답)
+anthropic==0.39.0
+
 # Utilities
 python-dotenv==1.0.1
 structlog==24.2.0

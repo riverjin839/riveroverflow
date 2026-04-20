@@ -39,6 +39,20 @@ class Settings(BaseSettings):
     max_position_ratio: float = 0.1        # 종목당 최대 포트폴리오 비율 (10%)
     default_stop_loss_pct: float = 0.03    # 기본 손절 비율 (3%)
 
+    # HANRIVER 외부 연동 (비어 있으면 해당 기능 비활성화)
+    dart_api_key: str = ""                 # DART OpenAPI
+    anthropic_api_key: str = ""            # Claude
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
+    # HANRIVER 자동 리포트
+    hanriver_daily_report_enabled: bool = False
+    hanriver_weekly_report_enabled: bool = False
+    hanriver_daily_report_hour: int = 16   # 장 마감 후 (KST)
+    hanriver_weekly_report_weekday: int = 5  # 금요일
+    # 일일 최대 손실 한도 (Phase 5 리스크 가드)
+    hanriver_daily_loss_limit_pct: float = 0.05
+
     @field_validator("database_url")
     @classmethod
     def validate_db_url(cls, v: str) -> str:

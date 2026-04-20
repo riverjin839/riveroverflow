@@ -1,0 +1,12 @@
+{
+  "name": "HANRIVER — 주식 매매 자비스",
+  "short_name": "HANRIVER",
+  "description": "RIVERFLOW 기반 개인 트레이딩 AI 자비스",
+  "start_url": "/hanriver",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
