@@ -9,6 +9,7 @@ import ResearchPage from './views/research/ResearchPage'
 import OntologyPage from './views/ontology/OntologyPage'
 import SettingsPage from './views/settings/SettingsPage'
 import ReportsPage from './views/reports/ReportsPage'
+import HanriverDashboardPage from './views/hanriver/HanriverDashboardPage'
 import LoginPage from './views/auth/LoginPage'
 import { useAuthStore } from './models/authStore'
 
@@ -33,6 +34,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="hanriver" element={<HanriverDashboardPage />} />
           <Route path="portfolio" element={<PortfolioPage />} />
           <Route path="strategies" element={<StrategiesPage />} />
           <Route path="screener"  element={<ScreenerPage />} />
