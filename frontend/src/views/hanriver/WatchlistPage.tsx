@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Trash2, Plus } from 'lucide-react'
 import { hanriverApi, type WatchlistItem, type AlertItem } from '../../presenters/useHanriverPhase2'
+import StockSearchInput from '../../components/StockSearchInput'
 
 export default function WatchlistPage() {
   const [items, setItems] = useState<WatchlistItem[]>([])
@@ -54,7 +55,12 @@ export default function WatchlistPage() {
       <section className="bg-surface-card rounded-lg border border-surface-border p-4">
         <h2 className="text-sm font-semibold text-slate-200 mb-3">관심 종목</h2>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
-          <input className="input" placeholder="005930" value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value })} />
+          <StockSearchInput
+            value={form.symbol}
+            onChange={(v) => setForm((f) => ({ ...f, symbol: v }))}
+            onSelect={(it) => setForm((f) => ({ ...f, symbol: it.symbol, name: it.name }))}
+            placeholder="종목명/코드 검색"
+          />
           <input className="input" placeholder="삼성전자" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <input className="input" placeholder="tags (csv)" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
           <input className="input md:col-span-1" placeholder="memo" value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
@@ -78,7 +84,11 @@ export default function WatchlistPage() {
       <section className="bg-surface-card rounded-lg border border-surface-border p-4">
         <h2 className="text-sm font-semibold text-slate-200 mb-3">알림 규칙</h2>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
-          <input className="input" placeholder="005930" value={alertForm.symbol} onChange={(e) => setAlertForm({ ...alertForm, symbol: e.target.value })} />
+          <StockSearchInput
+            value={alertForm.symbol}
+            onChange={(v) => setAlertForm((f) => ({ ...f, symbol: v }))}
+            placeholder="종목명/코드 검색"
+          />
           <select className="input" value={alertForm.rule_type} onChange={(e) => setAlertForm({ ...alertForm, rule_type: e.target.value })}>
             <option value="price_above">가격 이상</option>
             <option value="price_below">가격 이하</option>
