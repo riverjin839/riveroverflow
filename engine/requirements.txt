@@ -16,6 +16,7 @@ pydantic-settings==2.3.1
 
 # Korean broker APIs
 pykrx                      # 한국거래소 공공 데이터 (인증 불필요, 개발/데모용)
+yfinance==0.2.40           # 해외 지수/환율/원자재/VIX (HANRIVER 대시보드)
 # python-kis               # 한국투자증권 Open API (PyPI 미등록 — KIS 사용 시 수동 설치)
 # mojito2==0.1.11          # alternative broker library
 

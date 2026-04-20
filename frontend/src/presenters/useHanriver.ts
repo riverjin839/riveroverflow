@@ -55,20 +55,21 @@ function usePolled<T>(path: string, intervalMs: number, initial: T) {
   return { data, loading, error }
 }
 
+// 폴링 주기는 백엔드 TTL 캐시와 동일하게 맞춰 트래픽 낭비를 피한다.
 export const useKrIndices = () =>
-  usePolled<Quote[]>('/api/v1/hanriver/indices/kr', 5_000, [])
+  usePolled<Quote[]>('/api/v1/hanriver/indices/kr', 30_000, [])
 
 export const useGlobalIndices = () =>
-  usePolled<Quote[]>('/api/v1/hanriver/indices/global', 30_000, [])
+  usePolled<Quote[]>('/api/v1/hanriver/indices/global', 60_000, [])
 
 export const useFxCommodities = () =>
-  usePolled<Quote[]>('/api/v1/hanriver/fx', 30_000, [])
+  usePolled<Quote[]>('/api/v1/hanriver/fx', 60_000, [])
 
 export const useSentiment = () =>
   usePolled<Quote[]>('/api/v1/hanriver/sentiment', 60_000, [])
 
 export const useSectorHeatmap = () =>
-  usePolled<Quote[]>('/api/v1/hanriver/heatmap/sectors', 30_000, [])
+  usePolled<Quote[]>('/api/v1/hanriver/heatmap/sectors', 60_000, [])
 
 export const useHanriverNews = (limit = 20) =>
   usePolled<NewsItem[]>(`/api/v1/hanriver/news?limit=${limit}`, 60_000, [])

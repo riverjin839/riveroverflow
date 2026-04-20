@@ -29,7 +29,7 @@ export default function HanriverDashboardPage() {
           </p>
         </div>
         <div className="text-xs text-slate-500">
-          Phase 1 Week 1 · stub 데이터로 렌더 (Week 2에서 실시세 연결)
+          KR 지수: pykrx(일봉 종가) · 해외/환율/원자재/VIX: yfinance · F&G: alternative.me
         </div>
       </header>
 
