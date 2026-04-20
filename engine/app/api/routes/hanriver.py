@@ -27,6 +27,7 @@ from ...hanriver import (
     disclosures as disclosures_mod,
     indicators,
     naver as naver_mod,
+    limit_up as limit_up_mod,
 )
 from ...hanriver.ai import signal_generator, report_builder, news_scoring, coach
 from ...hanriver import journal as journal_mod
@@ -106,6 +107,23 @@ async def search_stocks(q: str = Query(..., min_length=1, max_length=40), limit:
     """네이버 자동완성 기반 종목 검색. 한글명/영문/코드 모두 지원."""
     items = await naver_mod.search_stock(q, limit=limit)
     return [SearchResult(**it) for it in items]
+
+
+@router.get("/limit-up")
+async def get_limit_up(date_str: str | None = Query(None, alias="date"), force: bool = False):
+    """오늘의 상한가/급등 종목 + 거래대금 + AI 분석 상승 이유.
+
+    - date 미지정 시 최근 영업일
+    - 상한가(>=29.5%) 만 LLM 상승이유를 생성, 급등(>=10%) 은 뉴스 제목만 첨부
+    - 결과는 날짜 기준으로 메모리 캐시 (force=true 로 재생성 가능)
+    """
+    target = None
+    if date_str:
+        try:
+            target = date.fromisoformat(date_str)
+        except ValueError:
+            raise HTTPException(400, "date 형식은 YYYY-MM-DD")
+    return await limit_up_mod.get_limit_up_report(target=target, force=force)
 
 
 @router.get("/news", response_model=list[NewsResponse])

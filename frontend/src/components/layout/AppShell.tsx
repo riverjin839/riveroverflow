@@ -30,6 +30,7 @@ import clsx from 'clsx'
 const NAV_ITEMS = [
   { to: '/dashboard',  icon: LayoutDashboard, label: '대시보드' },
   { to: '/hanriver',            icon: Waves,       label: 'HANRIVER 시황' },
+  { to: '/hanriver/limit-up',   icon: TrendingUp,  label: '오늘의 상한가' },
   { to: '/hanriver/watchlist',  icon: Star,        label: '관심/알림' },
   { to: '/hanriver/signals',    icon: Bot,         label: 'AI 시그널' },
   { to: '/hanriver/reports',    icon: ScrollText,  label: 'AI 리포트' },
