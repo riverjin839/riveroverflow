@@ -10,6 +10,7 @@ import {
   FlaskConical,
   Network,
   Newspaper,
+  Waves,
   Menu,
   X,
   LogOut,
@@ -22,6 +23,7 @@ import clsx from 'clsx'
 
 const NAV_ITEMS = [
   { to: '/dashboard',  icon: LayoutDashboard, label: '대시보드' },
+  { to: '/hanriver',   icon: Waves,            label: 'HANRIVER 시황' },
   { to: '/portfolio',  icon: Briefcase,        label: '포트폴리오' },
   { to: '/strategies', icon: Zap,              label: '전략' },
   { to: '/screener',   icon: TrendingUp,       label: '신고가 스크리너' },
