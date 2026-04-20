@@ -111,7 +111,7 @@ async def fetch_naver_stock(symbol: str) -> dict | None:
 async def search_stock(query: str, limit: int = 10) -> list[dict]:
     """네이버 종목 자동완성. 한글·영문·코드 모두 지원.
 
-    응답 구조: {"items": [[{"cd":"005930","nm":"삼성전자","mksNm":"KOSPI",...}]]}
+    응답 구조가 지속적으로 변하므로 items 를 평탄화하며 dict 만 수집한다.
     """
     query = query.strip()
     if not query:
@@ -125,27 +125,37 @@ async def search_stock(query: str, limit: int = 10) -> list[dict]:
             r.raise_for_status()
             text = r.text
     except Exception as e:
-        logger.warning("naver search failed: %s", e)
+        logger.warning("naver search fetch failed: %s", e)
         return []
 
     import json
     import re
-    # _callback() 래핑 제거
-    stripped = re.sub(r"^\w*\(", "", text).rstrip(");").rstrip(")")
+    stripped = re.sub(r"^\w*\(", "", text).rstrip(");").rstrip(")").strip()
     try:
         data = json.loads(stripped)
-    except json.JSONDecodeError:
+    except (ValueError, json.JSONDecodeError):
+        logger.debug("naver search JSON parse failed")
         return []
 
+    # items 은 list[dict] 일 수도 있고 list[list[dict]] 일 수도 있다 — 평탄화
+    items = data.get("items", []) if isinstance(data, dict) else []
+    flat: list[dict] = []
+    for node in items:
+        if isinstance(node, list):
+            flat.extend(n for n in node if isinstance(n, dict))
+        elif isinstance(node, dict):
+            flat.append(node)
+
     out: list[dict] = []
-    for group in data.get("items", []):
-        for it in group:
-            code = it.get("cd")
-            name = it.get("nm")
-            market = it.get("mksNm") or it.get("nvTypeCode") or ""
-            if not code or not name:
-                continue
-            out.append({"symbol": code, "name": name, "market": market})
-            if len(out) >= limit:
-                return out
+    for it in flat:
+        code = it.get("cd") or it.get("code")
+        name = it.get("nm") or it.get("name")
+        if not code or not name:
+            continue
+        # <strong> 하이라이트 태그 제거
+        name = re.sub(r"<[^>]+>", "", str(name))
+        market = it.get("mksNm") or it.get("typeCode") or ""
+        out.append({"symbol": str(code), "name": name, "market": str(market)})
+        if len(out) >= limit:
+            break
     return out
