@@ -28,6 +28,7 @@ from ...hanriver import (
     indicators,
     naver as naver_mod,
     limit_up as limit_up_mod,
+    stock_master as stock_master_mod,
 )
 from ...hanriver.ai import signal_generator, report_builder, news_scoring, coach
 from ...hanriver import journal as journal_mod
@@ -104,9 +105,31 @@ class SearchResult(BaseModel):
 
 @router.get("/stocks/search", response_model=list[SearchResult])
 async def search_stocks(q: str = Query(..., min_length=1, max_length=40), limit: int = 10):
-    """네이버 자동완성 기반 종목 검색. 한글명/영문/코드 모두 지원."""
-    items = await naver_mod.search_stock(q, limit=limit)
-    return [SearchResult(**it) for it in items]
+    """종목 자동완성.
+    1차: 로컬 stock master (pykrx 로 적재, 24h TTL) — 오프라인에서도 동작
+    2차(비어 있을 때만): 네이버 검색 API
+    """
+    try:
+        items = await stock_master_mod.search(q, limit=limit)
+        if items:
+            return [SearchResult(**it) for it in items]
+    except Exception as e:
+        logger.warning("local stock search failed: %s", e)
+
+    # Fallback: Naver
+    try:
+        items = await naver_mod.search_stock(q, limit=limit)
+        return [SearchResult(**it) for it in items]
+    except Exception as e:
+        logger.warning("naver search failed: %s", e)
+        return []
+
+
+@router.post("/stocks/master/reload")
+async def reload_stock_master():
+    """종목 마스터 수동 재적재 (일일 리프레시 트리거)."""
+    entries = await stock_master_mod.ensure_loaded(force=True)
+    return {"count": len(entries)}
 
 
 @router.get("/limit-up")
@@ -181,6 +204,8 @@ async def get_stock_detail(symbol: str, request: Request):
     broker = getattr(request.app.state, "broker", None)
     if broker is None:
         raise HTTPException(503, "브로커 미초기화")
+    if not symbol.isdigit() or len(symbol) != 6:
+        raise HTTPException(400, f"유효한 종목 코드가 아닙니다: '{symbol}'")
     try:
         market = await broker.get_market_price(symbol)
         ohlcv = await broker.get_ohlcv(symbol, "D", 200)
@@ -361,7 +386,19 @@ async def generate_signal(
     if broker is None:
         raise HTTPException(503, "브로커 미초기화")
 
-    result = await signal_generator.generate(broker, body.symbol, body.mode)
+    # 한글명이 실수로 들어오는 경우를 방지 — 숫자 6자리 코드인지 간단 검증
+    sym = body.symbol.strip()
+    if not sym.isdigit() or len(sym) != 6:
+        raise HTTPException(
+            status_code=400,
+            detail=f"유효한 종목 코드(6자리 숫자)를 선택해 주세요. 입력값: '{body.symbol}'",
+        )
+
+    try:
+        result = await signal_generator.generate(broker, sym, body.mode)
+    except Exception as e:
+        logger.warning("signal generation failed symbol=%s: %s", sym, e)
+        raise HTTPException(502, f"시그널 생성 실패: {e}")
     sig = AiSignal(
         symbol=result["symbol"], name=result["name"], mode=body.mode,
         signal=result["signal"],

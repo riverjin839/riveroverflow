@@ -9,6 +9,7 @@ type DiscItem = { report_name: string; url: string; rcept_dt: string }
 type LimitUpItem = {
   symbol: string
   name: string
+  market: string
   close: number
   change_pct: number
   volume: number
@@ -20,11 +21,20 @@ type LimitUpItem = {
 }
 type Payload = {
   date: string
+  source: string
   limit_up_count: number
   surge_count: number
   total_trading_value: number
   items: LimitUpItem[]
   generated_at: string
+}
+
+function todayISO(): string {
+  const d = new Date()
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 function formatWon(n: number): string {
@@ -38,7 +48,7 @@ export default function LimitUpPage() {
   const [data, setData] = useState<Payload | null>(null)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const [date, setDate] = useState('')
+  const [date, setDate] = useState(todayISO())
   const [tab, setTab] = useState<'all' | 'limit_up' | 'surge'>('limit_up')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
@@ -61,6 +71,14 @@ export default function LimitUpPage() {
   useEffect(() => {
     fetchData(false)
   }, [])
+
+  // 오늘 날짜일 때만 1분 간격 자동 새로고침 (네이버 캐시 30s + 버퍼)
+  useEffect(() => {
+    if (date !== todayISO()) return
+    const timer = setInterval(() => fetchData(false), 60_000)
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date])
 
   const items = data?.items ?? []
   const filtered = tab === 'all' ? items : items.filter((i) => i.category === tab)
@@ -105,7 +123,7 @@ export default function LimitUpPage() {
 
       {data && (
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat label="기준일" value={data.date} color="text-slate-200" />
+          <Stat label={`기준일 · ${data.source}`} value={data.date} color="text-slate-200" />
           <Stat label="상한가" value={`${data.limit_up_count}종목`} color="text-red-400" />
           <Stat label="급등 (≥10%)" value={`${data.surge_count}종목`} color="text-amber-400" />
           <Stat label="합산 거래대금" value={formatWon(data.total_trading_value)} color="text-brand-500" />
@@ -165,6 +183,7 @@ export default function LimitUpPage() {
                   {it.name}
                 </Link>
                 <span className="text-xs text-slate-500 font-mono">{it.symbol}</span>
+                {it.market && <span className="text-[10px] text-slate-600 uppercase">{it.market}</span>}
                 <span className="flex-1" />
                 <span className="text-sm tabular-nums text-slate-200">{it.close.toLocaleString()}</span>
                 <span className="text-sm tabular-nums font-semibold text-red-400 w-20 text-right">

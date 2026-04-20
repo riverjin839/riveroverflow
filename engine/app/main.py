@@ -57,6 +57,11 @@ async def lifespan(app: FastAPI):
     hanriver_scheduler.install(scheduler._scheduler)
     scheduler.start()
 
+    # HANRIVER 종목 마스터 백그라운드 프리로드 (첫 자동완성 지연 방지)
+    import asyncio as _asyncio
+    from .hanriver import stock_master as _stock_master
+    _asyncio.create_task(_stock_master.ensure_loaded())
+
     # Seed ontology rules (최초 1회)
     async with engine.begin() as conn:
         pass  # tables already created above
