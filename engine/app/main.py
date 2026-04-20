@@ -52,6 +52,9 @@ async def lifespan(app: FastAPI):
 
     # Start market scheduler (auto start/stop based on KRX hours)
     scheduler = MarketScheduler(engine_runner, researcher=researcher)
+    # HANRIVER 자동 리포트 잡 등록 (설정 활성화 시)
+    from .hanriver import scheduler as hanriver_scheduler
+    hanriver_scheduler.install(scheduler._scheduler)
     scheduler.start()
 
     # Seed ontology rules (최초 1회)
