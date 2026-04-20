@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { hanriverApi, type BacktestSummary } from '../../presenters/useHanriverPhase2'
 import StockSearchInput from '../../components/StockSearchInput'
+import MacWindow, { MacMiniCard } from '../../components/MacWindow'
 
 export default function BacktestPage() {
   const [list, setList] = useState<BacktestSummary[]>([])
@@ -12,10 +13,7 @@ export default function BacktestPage() {
   const [result, setResult] = useState<any>(null)
   const [busy, setBusy] = useState(false)
 
-  async function load() {
-    const r = await hanriverApi.listBacktest()
-    setList(r.data)
-  }
+  async function load() { const r = await hanriverApi.listBacktest(); setList(r.data) }
   useEffect(() => { load() }, [])
 
   async function run() {
@@ -35,22 +33,20 @@ export default function BacktestPage() {
       })
       setResult(r.data)
       await load()
-    } finally {
-      setBusy(false)
-    }
+    } finally { setBusy(false) }
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-white">백테스트</h1>
+    <div className="space-y-5">
+      <h1 className="text-2xl font-bold text-ink tracking-tight">백테스트</h1>
 
-      <section className="bg-surface-card rounded-lg border border-surface-border p-4">
+      <MacWindow title="STRATEGY CONFIG">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
           <input className="input" placeholder="이름" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <StockSearchInput
             value={form.symbol}
             onChange={(v) => setForm((f) => ({ ...f, symbol: v }))}
-            placeholder="종목명/코드 검색"
+            placeholder="종목명/코드"
           />
           <select className="input" value={form.strategy} onChange={(e) => setForm({ ...form, strategy: e.target.value })}>
             <option value="ma_cross">MA Cross</option>
@@ -62,59 +58,54 @@ export default function BacktestPage() {
           <button className="btn-primary" onClick={run} disabled={busy}>{busy ? '실행 중…' : '실행'}</button>
         </div>
         {form.strategy === 'ma_cross' && (
-          <div className="grid grid-cols-4 gap-2 mt-2">
-            <label className="text-xs text-slate-500">단기 MA
-              <input className="input" type="number" value={form.short} onChange={(e) => setForm({ ...form, short: Number(e.target.value) })} />
+          <div className="grid grid-cols-4 gap-2 mt-3">
+            <label className="text-xs text-ink-muted space-y-1">단기 MA
+              <input className="input w-full" type="number" value={form.short} onChange={(e) => setForm({ ...form, short: Number(e.target.value) })} />
             </label>
-            <label className="text-xs text-slate-500">장기 MA
-              <input className="input" type="number" value={form.long} onChange={(e) => setForm({ ...form, long: Number(e.target.value) })} />
+            <label className="text-xs text-ink-muted space-y-1">장기 MA
+              <input className="input w-full" type="number" value={form.long} onChange={(e) => setForm({ ...form, long: Number(e.target.value) })} />
             </label>
           </div>
         )}
         {form.strategy === 'rsi' && (
-          <div className="grid grid-cols-4 gap-2 mt-2">
-            <label className="text-xs text-slate-500">period
-              <input className="input" type="number" value={form.period} onChange={(e) => setForm({ ...form, period: Number(e.target.value) })} />
+          <div className="grid grid-cols-4 gap-2 mt-3">
+            <label className="text-xs text-ink-muted space-y-1">period
+              <input className="input w-full" type="number" value={form.period} onChange={(e) => setForm({ ...form, period: Number(e.target.value) })} />
             </label>
-            <label className="text-xs text-slate-500">oversold
-              <input className="input" type="number" value={form.oversold} onChange={(e) => setForm({ ...form, oversold: Number(e.target.value) })} />
+            <label className="text-xs text-ink-muted space-y-1">oversold
+              <input className="input w-full" type="number" value={form.oversold} onChange={(e) => setForm({ ...form, oversold: Number(e.target.value) })} />
             </label>
-            <label className="text-xs text-slate-500">overbought
-              <input className="input" type="number" value={form.overbought} onChange={(e) => setForm({ ...form, overbought: Number(e.target.value) })} />
+            <label className="text-xs text-ink-muted space-y-1">overbought
+              <input className="input w-full" type="number" value={form.overbought} onChange={(e) => setForm({ ...form, overbought: Number(e.target.value) })} />
             </label>
           </div>
         )}
-      </section>
+      </MacWindow>
 
       {result && (
-        <section className="bg-surface-card rounded-lg border border-surface-border p-4">
-          <h2 className="text-sm font-semibold text-slate-200 mb-3">결과</h2>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-sm">
+        <MacWindow title="RESULT">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             {Object.entries(result.metrics).map(([k, v]) => (
-              <div key={k} className="bg-surface rounded border border-surface-border p-2">
-                <div className="text-xs text-slate-500">{k}</div>
-                <div className="text-slate-200 tabular-nums mt-1">{typeof v === 'number' ? v : String(v)}</div>
-              </div>
+              <MacMiniCard key={k} label={k} value={typeof v === 'number' ? v : String(v)} />
             ))}
           </div>
-        </section>
+        </MacWindow>
       )}
 
-      <section className="bg-surface-card rounded-lg border border-surface-border p-4">
-        <h2 className="text-sm font-semibold text-slate-200 mb-3">이전 결과</h2>
+      <MacWindow title="PREVIOUS RUNS" bodyClassName="p-0">
         <ul className="divide-y divide-surface-border text-sm">
           {list.map((b) => (
-            <li key={b.id} className="py-2 grid grid-cols-6 gap-2">
-              <span className="text-slate-200 col-span-2 truncate">{b.name}</span>
-              <span className="text-slate-500 text-xs">WR {(Number(b.metrics.win_rate) * 100).toFixed(1)}%</span>
-              <span className="text-slate-500 text-xs">PF {b.metrics.profit_factor}</span>
-              <span className="text-slate-500 text-xs">MDD {(Number(b.metrics.mdd) * 100).toFixed(1)}%</span>
-              <span className="text-slate-500 text-xs text-right">{new Date(b.created_at).toLocaleDateString('ko-KR')}</span>
+            <li key={b.id} className="px-4 py-3 grid grid-cols-6 gap-2 items-center">
+              <span className="text-ink col-span-2 font-medium truncate">{b.name}</span>
+              <span className="text-xs text-ink-muted">WR {(Number(b.metrics.win_rate) * 100).toFixed(1)}%</span>
+              <span className="text-xs text-ink-muted">PF {b.metrics.profit_factor}</span>
+              <span className="text-xs text-ink-muted">MDD {(Number(b.metrics.mdd) * 100).toFixed(1)}%</span>
+              <span className="text-xs text-ink-subtle text-right">{new Date(b.created_at).toLocaleDateString('ko-KR')}</span>
             </li>
           ))}
-          {list.length === 0 && <li className="text-xs text-slate-500 py-3">이전 결과 없음</li>}
+          {list.length === 0 && <li className="px-4 py-4 text-xs text-ink-subtle">이전 결과 없음</li>}
         </ul>
-      </section>
+      </MacWindow>
     </div>
   )
 }

@@ -103,13 +103,13 @@ export default function StockSearchInput({
         autoFocus={autoFocus}
       />
       {open && items.length > 0 && (
-        <ul className="absolute z-20 left-0 right-0 mt-1 bg-surface-card border border-surface-border rounded shadow-lg max-h-72 overflow-auto">
+        <ul className="absolute z-20 left-0 right-0 mt-1 bg-surface-card border border-surface-border rounded-lg shadow-mac-lg max-h-72 overflow-auto">
           {items.map((it, idx) => (
             <li
               key={it.symbol}
               className={clsx(
-                'px-3 py-2 text-sm cursor-pointer flex items-center gap-2',
-                idx === active ? 'bg-brand-500/20 text-white' : 'text-slate-200 hover:bg-surface-border',
+                'px-3 py-2 text-sm cursor-pointer flex items-center gap-2 transition-colors',
+                idx === active ? 'bg-ink text-white' : 'text-ink hover:bg-surface-inner',
               )}
               onMouseDown={(e) => {
                 e.preventDefault()
@@ -117,15 +117,19 @@ export default function StockSearchInput({
               }}
               onMouseEnter={() => setActive(idx)}
             >
-              <span className="text-brand-500 font-mono text-xs w-16">{it.symbol}</span>
+              <span className={clsx('font-mono text-xs w-16', idx === active ? 'text-white/70' : 'text-brand-600')}>
+                {it.symbol}
+              </span>
               <span className="flex-1 truncate">{it.name}</span>
-              <span className="text-xs text-slate-500">{it.market}</span>
+              <span className={clsx('text-[10px] uppercase tracking-wider', idx === active ? 'text-white/60' : 'text-ink-subtle')}>
+                {it.market}
+              </span>
             </li>
           ))}
         </ul>
       )}
       {loading && value && items.length === 0 && (
-        <div className="absolute z-20 left-0 right-0 mt-1 bg-surface-card border border-surface-border rounded px-3 py-2 text-xs text-slate-500">
+        <div className="absolute z-20 left-0 right-0 mt-1 bg-surface-card border border-surface-border rounded-lg shadow-mac px-3 py-2 text-xs text-ink-subtle">
           검색 중...
         </div>
       )}

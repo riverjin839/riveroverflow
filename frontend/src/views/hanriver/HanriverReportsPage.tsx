@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { hanriverApi, type AiReport } from '../../presenters/useHanriverPhase2'
+import MacWindow from '../../components/MacWindow'
+import clsx from 'clsx'
 
 export default function HanriverReportsPage() {
   const [reports, setReports] = useState<AiReport[]>([])
@@ -25,16 +27,15 @@ export default function HanriverReportsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-white">HANRIVER AI 리포트</h1>
+    <div className="space-y-5">
+      <h1 className="text-2xl font-bold text-ink tracking-tight">AI 리포트</h1>
 
-      <section className="bg-surface-card rounded-lg border border-surface-border p-4">
-        <h2 className="text-sm font-semibold text-slate-200 mb-3">리포트 생성</h2>
+      <MacWindow title="GENERATE">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <select className="input" value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="daily">Daily (당일 시장 요약)</option>
-            <option value="weekly">Weekly (주간 리뷰)</option>
-            <option value="stock">Stock (종목 심층)</option>
+            <option value="daily">Daily · 당일 시장 요약</option>
+            <option value="weekly">Weekly · 주간 리뷰</option>
+            <option value="stock">Stock · 종목 심층</option>
           </select>
           <input
             className="input md:col-span-2"
@@ -43,38 +44,39 @@ export default function HanriverReportsPage() {
             onChange={(e) => setSubject(e.target.value)}
           />
           <button className="btn-primary" onClick={generate} disabled={busy}>
-            {busy ? '생성 중 (최대 30초)…' : '리포트 생성'}
+            {busy ? '생성 중 …' : '리포트 생성'}
           </button>
         </div>
-      </section>
+      </MacWindow>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-1 space-y-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="space-y-2">
           {reports.map((r) => (
             <button
               key={r.id}
-              className={`w-full text-left bg-surface-card border rounded p-3 text-sm hover:border-brand-500/60 ${selected?.id === r.id ? 'border-brand-500' : 'border-surface-border'}`}
+              className={clsx(
+                'w-full text-left card p-3 text-sm transition-all',
+                selected?.id === r.id ? 'ring-2 ring-brand-500' : 'hover:border-ink-subtle',
+              )}
               onClick={() => setSelected(r)}
             >
-              <div className="text-xs text-slate-500">
+              <div className="text-[11px] text-ink-subtle">
                 {r.report_type} · {new Date(r.created_at).toLocaleString('ko-KR')}
               </div>
-              <div className="text-slate-200 mt-1 truncate">{r.subject}</div>
+              <div className="text-ink font-medium mt-1 truncate">{r.subject}</div>
             </button>
           ))}
-          {reports.length === 0 && (
-            <div className="text-xs text-slate-500">생성된 리포트 없음</div>
-          )}
+          {reports.length === 0 && <div className="text-xs text-ink-subtle">생성된 리포트 없음</div>}
         </div>
-        <article className="lg:col-span-2 bg-surface-card border border-surface-border rounded-lg p-4 min-h-[320px]">
+        <MacWindow title="REPORT" className="lg:col-span-2" bodyClassName="p-5 min-h-[360px]">
           {selected ? (
-            <pre className="whitespace-pre-wrap font-sans text-sm text-slate-200 leading-relaxed">
+            <pre className="whitespace-pre-wrap font-sans text-[13px] text-ink leading-relaxed">
               {selected.content_md}
             </pre>
           ) : (
-            <div className="text-sm text-slate-500">왼쪽에서 리포트를 선택하세요.</div>
+            <div className="text-sm text-ink-subtle">왼쪽에서 리포트를 선택하세요.</div>
           )}
-        </article>
+        </MacWindow>
       </div>
     </div>
   )
