@@ -10,6 +10,7 @@ import OntologyPage from './views/ontology/OntologyPage'
 import SettingsPage from './views/settings/SettingsPage'
 import ReportsPage from './views/reports/ReportsPage'
 import HanriverDashboardPage from './views/hanriver/HanriverDashboardPage'
+import LimitUpPage from './views/hanriver/LimitUpPage'
 import StockDetailPage from './views/hanriver/StockDetailPage'
 import WatchlistPage from './views/hanriver/WatchlistPage'
 import SignalsPage from './views/hanriver/SignalsPage'
@@ -42,6 +43,7 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="hanriver" element={<HanriverDashboardPage />} />
+          <Route path="hanriver/limit-up" element={<LimitUpPage />} />
           <Route path="hanriver/stock/:symbol" element={<StockDetailPage />} />
           <Route path="hanriver/watchlist" element={<WatchlistPage />} />
           <Route path="hanriver/signals" element={<SignalsPage />} />
