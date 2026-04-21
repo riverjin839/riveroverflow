@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { hanriverApi } from '../../presenters/useHanriverPhase2'
 import StockSearchInput from '../../components/StockSearchInput'
+import MacWindow from '../../components/MacWindow'
 
 export default function ReplayPage() {
   const [symbol, setSymbol] = useState('005930')
@@ -19,10 +20,10 @@ export default function ReplayPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-white">복기 (타임머신 모드)</h1>
+    <div className="space-y-5">
+      <h1 className="text-2xl font-bold text-ink tracking-tight">복기 · 타임머신</h1>
 
-      <section className="bg-surface-card rounded-lg border border-surface-border p-4">
+      <MacWindow title="REPLAY SETTINGS">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <StockSearchInput value={symbol} onChange={setSymbol} placeholder="종목명/코드 검색" />
           <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -31,46 +32,41 @@ export default function ReplayPage() {
             {busy ? '재현 중…' : '재현'}
           </button>
         </div>
-      </section>
+      </MacWindow>
 
       {data && (
         <>
-          <section className="bg-surface-card rounded-lg border border-surface-border p-4">
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">
-              {data.symbol} · {data.target_date} 당시 지표
-            </h2>
-            <pre className="text-xs text-slate-300 whitespace-pre-wrap">
+          <MacWindow title={`INDICATORS · ${data.symbol} · ${data.target_date}`}>
+            <pre className="text-[12px] text-ink whitespace-pre-wrap font-mono">
               {JSON.stringify(data.indicators, null, 2)}
             </pre>
-          </section>
+          </MacWindow>
 
-          <section className="bg-surface-card rounded-lg border border-surface-border p-4">
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">당시 주변 뉴스</h2>
-            <ul className="divide-y divide-surface-border text-sm">
+          <MacWindow title="NEWS AT THE TIME" bodyClassName="p-0">
+            <ul className="divide-y divide-surface-border">
               {(data.news ?? []).map((n: any) => (
-                <li key={n.id} className="py-2 flex items-center gap-3">
-                  <span className="text-xs text-slate-500 w-32">{new Date(n.published_at).toLocaleString('ko-KR')}</span>
-                  <span className="text-xs text-slate-400 w-12">{n.source}</span>
-                  <a href={n.url} target="_blank" rel="noreferrer" className="text-slate-200 hover:text-brand-500 flex-1 truncate">{n.title}</a>
+                <li key={n.id} className="px-4 py-2 flex items-center gap-3 text-sm">
+                  <span className="text-[11px] text-ink-subtle w-32">{new Date(n.published_at).toLocaleString('ko-KR')}</span>
+                  <span className="text-[11px] text-ink-muted w-12">{n.source}</span>
+                  <a href={n.url} target="_blank" rel="noreferrer" className="text-ink hover:text-brand-600 flex-1 truncate">{n.title}</a>
                 </li>
               ))}
-              {(data.news ?? []).length === 0 && <li className="text-xs text-slate-500 py-2">기록된 뉴스 없음</li>}
+              {(data.news ?? []).length === 0 && <li className="px-4 py-4 text-xs text-ink-subtle">기록된 뉴스 없음</li>}
             </ul>
-          </section>
+          </MacWindow>
 
-          <section className="bg-surface-card rounded-lg border border-surface-border p-4">
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">당시 내 매매</h2>
-            <ul className="divide-y divide-surface-border text-sm">
+          <MacWindow title="MY TRADES" bodyClassName="p-0">
+            <ul className="divide-y divide-surface-border">
               {(data.trades ?? []).map((t: any) => (
-                <li key={t.id} className="py-2 flex gap-3">
-                  <span className="text-xs text-slate-500 w-32">{new Date(t.created_at).toLocaleString('ko-KR')}</span>
-                  <span className={t.side === 'buy' ? 'text-red-400' : 'text-blue-400'}>{t.side}</span>
-                  <span className="text-slate-200 tabular-nums">{t.quantity}주 @ {t.price.toLocaleString()}</span>
+                <li key={t.id} className="px-4 py-2 flex gap-3 text-sm">
+                  <span className="text-[11px] text-ink-subtle w-32">{new Date(t.created_at).toLocaleString('ko-KR')}</span>
+                  <span className={t.side === 'buy' ? 'text-up font-medium' : 'text-down font-medium'}>{t.side}</span>
+                  <span className="text-ink tabular-nums">{t.quantity}주 @ {t.price.toLocaleString()}</span>
                 </li>
               ))}
-              {(data.trades ?? []).length === 0 && <li className="text-xs text-slate-500 py-2">당일 매매 없음</li>}
+              {(data.trades ?? []).length === 0 && <li className="px-4 py-4 text-xs text-ink-subtle">당일 매매 없음</li>}
             </ul>
-          </section>
+          </MacWindow>
         </>
       )}
     </div>

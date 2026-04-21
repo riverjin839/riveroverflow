@@ -17,9 +17,9 @@ const TYPE_COLOR: Record<string, string> = {
   signal: '#f472b6',     // pink
 }
 
-const BG_COLOR = '#0b1220'
-const LINK_COLOR = 'rgba(148, 163, 184, 0.35)'  // slate-400
-const LABEL_COLOR = '#f1f5f9'
+const BG_COLOR = '#f4f4f5'
+const LINK_COLOR = 'rgba(82, 82, 91, 0.35)'  // ink-muted
+const LABEL_COLOR = '#18181b'
 
 type GraphNode = {
   id: string
@@ -129,7 +129,7 @@ export default function Ontology3DView({ objects, links }: Props) {
 
       <div
         ref={containerRef}
-        className="relative w-full h-[600px] rounded-lg overflow-hidden border border-surface-border bg-[#0b1220]"
+        className="relative w-full h-[600px] rounded-2xl overflow-hidden border border-surface-border bg-surface-inner shadow-mac"
       >
         <ForceGraph3D
           ref={graphRef}
@@ -166,20 +166,17 @@ export default function Ontology3DView({ objects, links }: Props) {
         />
 
         {hoveredNode && (
-          <div className="absolute top-3 left-3 bg-surface-card/90 backdrop-blur border border-surface-border rounded p-3 text-xs max-w-xs">
+          <div className="absolute top-3 left-3 bg-surface-card/90 backdrop-blur border border-surface-border rounded-lg shadow-mac p-3 text-xs max-w-xs">
             <div className="flex items-center gap-2 mb-1">
-              <span
-                className="inline-block w-2.5 h-2.5 rounded-full"
-                style={{ background: hoveredNode.color }}
-              />
-              <span className="text-slate-500">{hoveredNode.type}</span>
+              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: hoveredNode.color }} />
+              <span className="text-ink-subtle">{hoveredNode.type}</span>
             </div>
-            <div className="text-sm font-semibold text-white">{hoveredNode.name}</div>
-            <div className="text-slate-500 mt-1 font-mono">{hoveredNode.id}</div>
+            <div className="text-sm font-semibold text-ink">{hoveredNode.name}</div>
+            <div className="text-ink-subtle mt-1 font-mono">{hoveredNode.id}</div>
           </div>
         )}
 
-        <div className="absolute bottom-3 right-3 text-[10px] text-slate-600 bg-surface-card/70 backdrop-blur px-2 py-1 rounded">
+        <div className="absolute bottom-3 right-3 text-[10px] text-ink-subtle bg-surface-card/80 backdrop-blur border border-surface-border px-2 py-1 rounded">
           nodes {data.nodes.length} · edges {data.links.length}
         </div>
       </div>

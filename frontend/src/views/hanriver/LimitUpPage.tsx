@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { RefreshCw, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react'
+import { RefreshCw, ChevronDown, ChevronRight, Flame, TrendingUp, Coins } from 'lucide-react'
 import clsx from 'clsx'
 import api from '../../presenters/api'
+import MacWindow, { MacMiniCard } from '../../components/MacWindow'
 
 type NewsItem = { title: string; office: string; url: string; published: string }
 type DiscItem = { report_name: string; url: string; rcept_dt: string }
@@ -29,19 +30,16 @@ type Payload = {
   generated_at: string
 }
 
-function todayISO(): string {
-  const d = new Date()
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
-
 function formatWon(n: number): string {
   if (n >= 1_0000_0000_0000) return `${(n / 1_0000_0000_0000).toFixed(2)}조`
   if (n >= 1_0000_0000) return `${(n / 1_0000_0000).toFixed(1)}억`
   if (n >= 1_0000) return `${(n / 1_0000).toFixed(0)}만`
   return n.toLocaleString()
+}
+
+function todayISO(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export default function LimitUpPage() {
@@ -68,40 +66,32 @@ export default function LimitUpPage() {
     }
   }
 
-  useEffect(() => {
-    fetchData(false)
-  }, [])
-
-  // 오늘 날짜일 때만 1분 간격 자동 새로고침 (네이버 캐시 30s + 버퍼)
+  useEffect(() => { fetchData(false) }, [])
   useEffect(() => {
     if (date !== todayISO()) return
-    const timer = setInterval(() => fetchData(false), 60_000)
-    return () => clearInterval(timer)
+    const t = setInterval(() => fetchData(false), 60_000)
+    return () => clearInterval(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date])
 
   const items = data?.items ?? []
   const filtered = tab === 'all' ? items : items.filter((i) => i.category === tab)
 
-  function toggle(sym: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(sym)) next.delete(sym)
-      else next.add(sym)
-      return next
+  function toggle(s: string) {
+    setExpanded((p) => {
+      const n = new Set(p)
+      n.has(s) ? n.delete(s) : n.add(s)
+      return n
     })
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <TrendingUp size={22} className="text-red-400" />
-            오늘의 상한가 & 급등주
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            pykrx 일일 등락률 + 네이버 뉴스 + DART 공시 + Claude 상승 이유 분석
+          <h1 className="text-2xl font-bold text-ink tracking-tight">오늘의 상한가</h1>
+          <p className="text-xs text-ink-muted mt-1">
+            네이버 순위 · DART 공시 · Claude AI 분석
           </p>
         </div>
         <div className="flex gap-2">
@@ -110,10 +100,10 @@ export default function LimitUpPage() {
             className="input"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            placeholder="YYYY-MM-DD"
           />
           <button className="btn-primary" onClick={() => fetchData(false)} disabled={loading}>
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 조회
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            조회
           </button>
           <button className="btn-ghost text-sm" onClick={() => fetchData(true)} disabled={loading}>
             재분석
@@ -122,152 +112,139 @@ export default function LimitUpPage() {
       </header>
 
       {data && (
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat label={`기준일 · ${data.source}`} value={data.date} color="text-slate-200" />
-          <Stat label="상한가" value={`${data.limit_up_count}종목`} color="text-red-400" />
-          <Stat label="급등 (≥10%)" value={`${data.surge_count}종목`} color="text-amber-400" />
-          <Stat label="합산 거래대금" value={formatWon(data.total_trading_value)} color="text-brand-500" />
-        </section>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <MacMiniCard
+            icon={<span>●</span>}
+            label={`기준일 · ${data.source}`}
+            value={data.date}
+          />
+          <MacMiniCard
+            icon={<Flame size={12} className="text-up" />}
+            label="상한가"
+            value={<span className="text-up">{data.limit_up_count}종목</span>}
+          />
+          <MacMiniCard
+            icon={<TrendingUp size={12} className="text-amber-600" />}
+            label="급등 (≥10%)"
+            value={<span className="text-amber-600">{data.surge_count}종목</span>}
+          />
+          <MacMiniCard
+            icon={<Coins size={12} className="text-brand-600" />}
+            label="합산 거래대금"
+            value={<span className="text-brand-600">{formatWon(data.total_trading_value)}</span>}
+          />
+        </div>
       )}
 
-      {err && <div className="text-red-400 text-sm">{err}</div>}
+      {err && <div className="text-up text-sm">{err}</div>}
 
-      <div className="flex gap-1 border-b border-surface-border">
-        {(
-          [
-            { k: 'limit_up', l: `상한가 (${data?.limit_up_count ?? 0})` },
-            { k: 'surge', l: `급등 (${data?.surge_count ?? 0})` },
-            { k: 'all', l: `전체 (${items.length})` },
-          ] as const
-        ).map((t) => (
-          <button
-            key={t.k}
-            onClick={() => setTab(t.k)}
-            className={clsx(
-              'px-4 py-2 text-sm font-medium border-b-2 -mb-px',
-              tab === t.k ? 'border-brand-500 text-brand-500' : 'border-transparent text-slate-400 hover:text-white',
-            )}
-          >
-            {t.l}
-          </button>
-        ))}
-      </div>
-
-      <section className="space-y-2">
-        {loading && !data && (
-          <div className="text-center py-8 text-slate-500 text-sm">
-            수집·분석 중 (상한가 많은 날은 최대 30초)…
-          </div>
-        )}
-        {!loading && filtered.length === 0 && (
-          <div className="text-center py-8 text-slate-500 text-sm">해당 조건의 종목 없음</div>
-        )}
-        {filtered.map((it) => {
-          const open = expanded.has(it.symbol)
-          return (
-            <article
-              key={it.symbol}
-              className="bg-surface-card border border-surface-border rounded-lg overflow-hidden"
+      <MacWindow title="LIMIT UP · SURGE" bodyClassName="p-0">
+        {/* 탭 */}
+        <div className="flex gap-1 border-b border-surface-border px-4">
+          {(
+            [
+              { k: 'limit_up', l: `상한가 (${data?.limit_up_count ?? 0})` },
+              { k: 'surge', l: `급등 (${data?.surge_count ?? 0})` },
+              { k: 'all', l: `전체 (${items.length})` },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.k}
+              onClick={() => setTab(t.k)}
+              className={clsx(
+                'px-3 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors',
+                tab === t.k ? 'border-ink text-ink' : 'border-transparent text-ink-muted hover:text-ink',
+              )}
             >
-              <button
-                className="w-full flex items-center gap-3 p-3 text-left hover:bg-surface"
-                onClick={() => toggle(it.symbol)}
-              >
-                {open ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronRight size={16} className="text-slate-500" />}
-                <Badge category={it.category} />
-                <Link
-                  to={`/hanriver/stock/${it.symbol}`}
-                  className="text-sm font-semibold text-brand-500 hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {it.name}
-                </Link>
-                <span className="text-xs text-slate-500 font-mono">{it.symbol}</span>
-                {it.market && <span className="text-[10px] text-slate-600 uppercase">{it.market}</span>}
-                <span className="flex-1" />
-                <span className="text-sm tabular-nums text-slate-200">{it.close.toLocaleString()}</span>
-                <span className="text-sm tabular-nums font-semibold text-red-400 w-20 text-right">
-                  +{it.change_pct.toFixed(2)}%
-                </span>
-                <span className="text-xs tabular-nums text-slate-400 w-24 text-right">
-                  {formatWon(it.trading_value)}
-                </span>
-              </button>
+              {t.l}
+            </button>
+          ))}
+        </div>
 
-              {open && (
-                <div className="border-t border-surface-border p-4 space-y-3 bg-surface/60">
-                  {it.reason && (
-                    <div>
-                      <div className="text-xs text-slate-500 mb-1">AI 상승 이유 분석</div>
-                      <p className="text-sm text-slate-200 leading-relaxed">{it.reason}</p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs text-slate-500 mb-1">관련 뉴스</div>
-                      <ul className="text-xs space-y-1">
-                        {it.news.length > 0 ? (
-                          it.news.map((n, i) => (
+        <ul className="divide-y divide-surface-border">
+          {loading && !data && (
+            <li className="text-center py-10 text-sm text-ink-muted">수집·분석 중 (최대 30초)…</li>
+          )}
+          {!loading && filtered.length === 0 && (
+            <li className="text-center py-10 text-sm text-ink-subtle">해당 조건의 종목 없음</li>
+          )}
+          {filtered.map((it) => {
+            const open = expanded.has(it.symbol)
+            return (
+              <li key={it.symbol}>
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-inner/70 transition-colors"
+                  onClick={() => toggle(it.symbol)}
+                >
+                  {open ? <ChevronDown size={15} className="text-ink-subtle" /> : <ChevronRight size={15} className="text-ink-subtle" />}
+                  <Badge category={it.category} />
+                  <Link
+                    to={`/hanriver/stock/${it.symbol}`}
+                    className="text-[14px] font-semibold text-ink hover:text-brand-600"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {it.name}
+                  </Link>
+                  <span className="text-[11px] text-ink-subtle font-mono">{it.symbol}</span>
+                  {it.market && <span className="text-[10px] text-ink-subtle uppercase tracking-wider">{it.market}</span>}
+                  <span className="flex-1" />
+                  <span className="text-[13px] tabular-nums text-ink">{it.close.toLocaleString()}</span>
+                  <span className="text-[13px] tabular-nums font-semibold text-up w-16 text-right">
+                    +{it.change_pct.toFixed(2)}%
+                  </span>
+                  <span className="text-[12px] tabular-nums text-ink-muted w-20 text-right">
+                    {formatWon(it.trading_value)}
+                  </span>
+                </button>
+
+                {open && (
+                  <div className="border-t border-surface-border px-5 py-4 space-y-4 bg-surface-inner/50">
+                    {it.reason && (
+                      <div>
+                        <div className="eyebrow mb-1.5">AI 상승 이유</div>
+                        <p className="text-[13px] text-ink leading-relaxed">{it.reason}</p>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <div className="eyebrow mb-1.5">관련 뉴스</div>
+                        <ul className="text-[12px] space-y-1.5">
+                          {it.news.length > 0 ? it.news.map((n, i) => (
                             <li key={i} className="flex gap-2">
-                              <span className="text-slate-600 w-12 shrink-0">{n.office}</span>
-                              <a
-                                href={n.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-slate-300 hover:text-brand-500 truncate"
-                              >
+                              <span className="text-ink-subtle w-14 shrink-0">{n.office}</span>
+                              <a href={n.url} target="_blank" rel="noreferrer" className="text-ink hover:text-brand-600 truncate">
                                 {n.title}
                               </a>
                             </li>
-                          ))
-                        ) : (
-                          <li className="text-slate-600">(수집된 뉴스 없음)</li>
-                        )}
-                      </ul>
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-500 mb-1">최근 7일 공시</div>
-                      <ul className="text-xs space-y-1">
-                        {it.disclosures.length > 0 ? (
-                          it.disclosures.map((d, i) => (
+                          )) : <li className="text-ink-subtle">(수집된 뉴스 없음)</li>}
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="eyebrow mb-1.5">최근 7일 공시</div>
+                        <ul className="text-[12px] space-y-1.5">
+                          {it.disclosures.length > 0 ? it.disclosures.map((d, i) => (
                             <li key={i} className="flex gap-2">
-                              <span className="text-slate-600 w-16 shrink-0">{d.rcept_dt}</span>
-                              <a
-                                href={d.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-slate-300 hover:text-brand-500 truncate"
-                              >
+                              <span className="text-ink-subtle w-16 shrink-0">{d.rcept_dt}</span>
+                              <a href={d.url} target="_blank" rel="noreferrer" className="text-ink hover:text-brand-600 truncate">
                                 {d.report_name}
                               </a>
                             </li>
-                          ))
-                        ) : (
-                          <li className="text-slate-600">(공시 없음)</li>
-                        )}
-                      </ul>
+                          )) : <li className="text-ink-subtle">(공시 없음)</li>}
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 text-[12px] text-ink-muted pt-2 border-t border-surface-border">
+                      <div>거래량: <span className="text-ink tabular-nums">{it.volume.toLocaleString()}</span></div>
+                      <div>거래대금: <span className="text-ink tabular-nums">{it.trading_value.toLocaleString()}원</span></div>
+                      <div>종가: <span className="text-ink tabular-nums">{it.close.toLocaleString()}원</span></div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 text-xs text-slate-400 pt-2 border-t border-surface-border">
-                    <div>거래량: <span className="text-slate-200 tabular-nums">{it.volume.toLocaleString()}</span></div>
-                    <div>거래대금: <span className="text-slate-200 tabular-nums">{it.trading_value.toLocaleString()}원</span></div>
-                    <div>종가: <span className="text-slate-200 tabular-nums">{it.close.toLocaleString()}원</span></div>
-                  </div>
-                </div>
-              )}
-            </article>
-          )
-        })}
-      </section>
-    </div>
-  )
-}
-
-function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div className="bg-surface-card border border-surface-border rounded p-3">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className={clsx('text-lg font-semibold mt-1 tabular-nums', color ?? 'text-slate-200')}>{value}</div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      </MacWindow>
     </div>
   )
 }
@@ -275,13 +252,13 @@ function Stat({ label, value, color }: { label: string; value: string; color?: s
 function Badge({ category }: { category: 'limit_up' | 'surge' }) {
   if (category === 'limit_up') {
     return (
-      <span className="text-xs font-semibold px-2 py-0.5 rounded border bg-red-500/20 text-red-300 border-red-500/40 shrink-0">
+      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-up/40 bg-up/10 text-up shrink-0 tracking-wider">
         상한
       </span>
     )
   }
   return (
-    <span className="text-xs font-semibold px-2 py-0.5 rounded border bg-amber-500/20 text-amber-300 border-amber-500/40 shrink-0">
+    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-400/40 bg-amber-50 text-amber-700 shrink-0 tracking-wider">
       급등
     </span>
   )
