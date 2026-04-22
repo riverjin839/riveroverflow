@@ -29,6 +29,7 @@ from ...hanriver import (
     naver as naver_mod,
     limit_up as limit_up_mod,
     stock_master as stock_master_mod,
+    pattern_scanner as pattern_scanner_mod,
 )
 from ...hanriver.ai import signal_generator, report_builder, news_scoring, coach
 from ...hanriver import journal as journal_mod
@@ -130,6 +131,34 @@ async def reload_stock_master():
     """종목 마스터 수동 재적재 (일일 리프레시 트리거)."""
     entries = await stock_master_mod.ensure_loaded(force=True)
     return {"count": len(entries)}
+
+
+class PatternScanRequest(BaseModel):
+    kind: str = "all"   # all | kospi | kosdaq | custom
+    symbols: list[str] | None = None
+    max_results: int = 30
+    min_score: int = 60
+    enable_llm: bool = True
+
+
+@router.post("/pattern-scan")
+async def pattern_scan(body: PatternScanRequest, request: Request):
+    """선취매 후보 스캐너.
+
+    타이트 베이스 + 조용한 매집 + VSA SOS + 돌파 임박 특성을 점수화해
+    상위 N개를 반환. 상위 5개에 Claude 해설 첨부.
+    """
+    broker = getattr(request.app.state, "broker", None)
+    if broker is None:
+        raise HTTPException(503, "브로커 미초기화")
+    return await pattern_scanner_mod.scan(
+        broker=broker,
+        kind=body.kind,
+        symbols=body.symbols,
+        max_results=body.max_results,
+        min_score=body.min_score,
+        enable_llm=body.enable_llm,
+    )
 
 
 @router.get("/limit-up")
