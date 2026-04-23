@@ -1,0 +1,21 @@
+{
+  "name": "riveroverflow-skills",
+  "description": "HANRIVER 트레이딩 자비스 + RIVERFLOW 개발 보조 skills. karpathy-guidelines 포함.",
+  "version": "1.0.0",
+  "author": { "name": "riverjin839" },
+  "license": "MIT",
+  "keywords": ["trading", "korean-stocks", "vsa", "hanriver", "riverflow", "karpathy"],
+  "skills": [
+    "./.claude/skills/karpathy-guidelines",
+    "./.claude/skills/add-broker",
+    "./.claude/skills/add-strategy",
+    "./.claude/skills/db-migration",
+    "./.claude/skills/deploy",
+    "./.claude/skills/write-tests",
+    "./.claude/skills/stair-step-pattern",
+    "./.claude/skills/vsa-analysis",
+    "./.claude/skills/limit-up-screen",
+    "./.claude/skills/backtest-validate",
+    "./.claude/skills/trade-replay"
+  ]
+}
